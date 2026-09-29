@@ -1,0 +1,3232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>TIME//SHIFT</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  user-select:none;
+}
+
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#050713;
+  font-family:Arial,sans-serif;
+  color:white;
+}
+
+#game{
+  position:relative;
+  width:100vw;
+  height:100vh;
+}
+
+canvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:block;
+}
+
+.screen{
+  position:absolute;
+  inset:0;
+  z-index:20;
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(65,90,220,.18),
+      transparent 45%
+    ),
+    rgba(3,5,15,.96);
+}
+
+.hidden{
+  display:none!important;
+}
+
+.logo{
+  font-size:clamp(40px,8vw,86px);
+  font-weight:900;
+  letter-spacing:8px;
+
+  text-shadow:
+    0 0 10px #6075ff,
+    0 0 40px #304cff;
+}
+
+.subtitle{
+  color:#8797df;
+  letter-spacing:5px;
+  font-size:13px;
+  margin:8px 0 35px;
+}
+
+.levels{
+  width:min(720px,90vw);
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px;
+}
+
+button{
+  border:1px solid #5365b9;
+  background:
+    linear-gradient(
+      #182044,
+      #0c1129
+    );
+
+  color:white;
+  border-radius:8px;
+  padding:15px;
+
+  cursor:pointer;
+  font-weight:bold;
+
+  transition:.15s;
+}
+
+button:hover{
+  transform:translateY(-2px);
+  border-color:#8da0ff;
+
+  box-shadow:
+    0 0 22px
+    rgba(80,110,255,.35);
+}
+
+button:active{
+  transform:translateY(0);
+}
+
+.levelBtn{
+  min-height:155px;
+  text-align:left;
+  position:relative;
+}
+
+.levelNum{
+  color:#7386ff;
+  font-size:12px;
+  letter-spacing:2px;
+}
+
+.levelName{
+  display:block;
+  font-size:20px;
+  margin:12px 0 8px;
+}
+
+.levelDesc{
+  color:#8993b8;
+  font-size:12px;
+  line-height:1.5;
+}
+
+.lock{
+  position:absolute;
+  top:15px;
+  right:15px;
+}
+
+.locked{
+  opacity:.35;
+}
+
+#reset{
+  width:190px;
+  margin-top:25px;
+  font-size:12px;
+}
+
+#hud{
+  position:absolute;
+  inset:0;
+  z-index:10;
+  pointer-events:none;
+}
+
+#top{
+  position:absolute;
+  top:18px;
+  left:18px;
+  right:18px;
+
+  display:flex;
+  justify-content:space-between;
+}
+
+.hudBox{
+  background:rgba(4,7,23,.75);
+  border:1px solid rgba(100,120,255,.35);
+  border-radius:7px;
+  padding:10px 14px;
+  backdrop-filter:blur(8px);
+}
+
+#abilities{
+  display:flex;
+  gap:7px;
+}
+
+.ability{
+  color:#9ca8d7;
+  font-size:11px;
+}
+
+#message{
+  position:absolute;
+  left:50%;
+  bottom:25px;
+
+  transform:translateX(-50%);
+
+  background:rgba(4,7,23,.82);
+  border:1px solid rgba(100,120,255,.35);
+
+  border-radius:7px;
+
+  padding:10px 16px;
+
+  color:#b9c5ff;
+  font-size:12px;
+
+  white-space:nowrap;
+}
+
+#menuBtn{
+  position:absolute;
+  right:18px;
+  bottom:18px;
+
+  pointer-events:auto;
+
+  font-size:11px;
+  padding:9px 12px;
+}
+
+#mobile{
+  display:none;
+
+  position:absolute;
+  z-index:15;
+
+  left:15px;
+  right:15px;
+  bottom:15px;
+
+  justify-content:space-between;
+
+  pointer-events:none;
+}
+
+.mobileGroup{
+  display:flex;
+  gap:8px;
+}
+
+.mobile{
+  width:54px;
+  height:54px;
+  padding:0;
+
+  border-radius:50%;
+
+  pointer-events:auto;
+
+  background:rgba(12,18,45,.9);
+}
+
+@media(max-width:700px){
+
+  .levels{
+    grid-template-columns:1fr;
+    max-height:65vh;
+    overflow-y:auto;
+  }
+
+  .levelBtn{
+    min-height:100px;
+  }
+
+  #abilities{
+    display:none;
+  }
+
+  #mobile{
+    display:flex;
+  }
+
+  #message{
+    bottom:82px;
+    font-size:10px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+<canvas id="canvas"></canvas>
+
+
+<!-- =====================================================
+     LEVEL SELECT
+===================================================== -->
+
+<div id="select" class="screen">
+
+  <div class="logo">
+    TIME//SHIFT
+  </div>
+
+  <div class="subtitle">
+    CONTROL THE MOMENT
+  </div>
+
+  <div class="levels">
+
+    <button
+      class="levelBtn"
+      data-level="1"
+    >
+
+      <span class="levelNum">
+        LEVEL 01
+      </span>
+
+      <span class="levelName">
+        TIME BASICS
+      </span>
+
+      <span class="levelDesc">
+        시간 정지와 ECHO의 기본.<br>
+        과거의 나와 협력하라.
+      </span>
+
+    </button>
+
+
+    <button
+      class="levelBtn"
+      data-level="2"
+    >
+
+      <span class="levelNum">
+        LEVEL 02
+      </span>
+
+      <span class="levelName">
+        TIME LOOP
+      </span>
+
+      <span class="levelDesc">
+        두 개의 스위치를<br>
+        동시에 활성화하라.
+      </span>
+
+      <span class="lock">
+        🔒
+      </span>
+
+    </button>
+
+
+    <button
+      class="levelBtn"
+      data-level="3"
+    >
+
+      <span class="levelNum">
+        LEVEL 03
+      </span>
+
+      <span class="levelName">
+        PARADOX
+      </span>
+
+      <span class="levelDesc">
+        과거와 현재가 만나는 곳.<br>
+        ECHO를 전략적으로 사용하라.
+      </span>
+
+      <span class="lock">
+        🔒
+      </span>
+
+    </button>
+
+  </div>
+
+  <button id="reset">
+    진행도 초기화
+  </button>
+
+</div>
+
+
+<!-- =====================================================
+     HUD
+===================================================== -->
+
+<div id="hud" class="hidden">
+
+  <div id="top">
+
+    <div
+      class="hudBox"
+      id="title"
+    >
+      LEVEL 01
+    </div>
+
+
+    <div
+      class="hudBox"
+      id="abilities"
+    >
+
+      <span class="ability">
+        A/D 이동
+      </span>
+
+      <span class="ability">
+        SPACE 점프
+      </span>
+
+      <span class="ability">
+        Q 시간정지
+      </span>
+
+      <span class="ability">
+        E ECHO
+      </span>
+
+    </div>
+
+  </div>
+
+
+  <div id="message">
+    E를 눌러 과거의 나를 만들어 보세요.
+  </div>
+
+
+  <button id="menuBtn">
+    ESC · LEVEL SELECT
+  </button>
+
+</div>
+
+
+<!-- =====================================================
+     MOBILE
+===================================================== -->
+
+<div id="mobile" class="hidden">
+
+  <div class="mobileGroup">
+
+    <button
+      class="mobile"
+      id="left"
+    >
+      ◀
+    </button>
+
+    <button
+      class="mobile"
+      id="right"
+    >
+      ▶
+    </button>
+
+  </div>
+
+
+  <div class="mobileGroup">
+
+    <button
+      class="mobile"
+      id="jump"
+    >
+      ▲
+    </button>
+
+    <button
+      class="mobile"
+      id="stop"
+    >
+      ◉
+    </button>
+
+    <button
+      class="mobile"
+      id="echo"
+    >
+      E
+    </button>
+
+  </div>
+
+</div>
+
+
+</div>
+
+
+<script>
+
+/* =====================================================
+   CANVAS
+===================================================== */
+
+const canvas =
+  document.getElementById("canvas");
+
+const ctx =
+  canvas.getContext("2d");
+
+let W = innerWidth;
+let H = innerHeight;
+
+function resize(){
+
+  W = innerWidth;
+  H = innerHeight;
+
+  const dpr =
+    Math.min(
+      devicePixelRatio || 1,
+      2
+    );
+
+  canvas.width =
+    W*dpr;
+
+  canvas.height =
+    H*dpr;
+
+  canvas.style.width =
+    W+"px";
+
+  canvas.style.height =
+    H+"px";
+
+  ctx.setTransform(
+    dpr,
+    0,
+    0,
+    dpr,
+    0,
+    0
+  );
+
+}
+
+addEventListener(
+  "resize",
+  resize
+);
+
+resize();
+
+
+/* =====================================================
+   UI
+===================================================== */
+
+const select =
+  document.getElementById("select");
+
+const hud =
+  document.getElementById("hud");
+
+const mobile =
+  document.getElementById("mobile");
+
+const title =
+  document.getElementById("title");
+
+const message =
+  document.getElementById("message");
+
+
+/* =====================================================
+   SAVE
+===================================================== */
+
+let unlocked =
+  Number(
+    localStorage.getItem(
+      "timeshift_unlock"
+    )
+  ) || 1;
+
+
+function saveProgress(){
+
+  localStorage.setItem(
+    "timeshift_unlock",
+    unlocked
+  );
+
+}
+
+
+function refreshButtons(){
+
+  document
+    .querySelectorAll(".levelBtn")
+    .forEach(btn=>{
+
+      const id =
+        Number(
+          btn.dataset.level
+        );
+
+      const lock =
+        btn.querySelector(
+          ".lock"
+        );
+
+
+      if(id <= unlocked){
+
+        btn.classList.remove(
+          "locked"
+        );
+
+        if(lock){
+          lock.textContent="▶";
+        }
+
+      }else{
+
+        btn.classList.add(
+          "locked"
+        );
+
+        if(lock){
+          lock.textContent="🔒";
+        }
+
+      }
+
+    });
+
+}
+
+refreshButtons();
+
+
+/* =====================================================
+   GAME STATE
+===================================================== */
+
+let mode =
+  "select";
+
+let levelId =
+  1;
+
+let level;
+
+let platforms = [];
+
+let lasers = [];
+
+let switches = [];
+
+let door;
+
+let cameraX = 0;
+
+let frame = 0;
+
+let timeStopped = false;
+
+let particles = [];
+
+let gameClear = false;
+
+
+/* =====================================================
+   PLAYER
+===================================================== */
+
+const player = {
+
+  x:80,
+  y:450,
+
+  w:30,
+  h:48,
+
+  vx:0,
+  vy:0,
+
+  speed:5.5,
+  jump:14,
+
+  grounded:false,
+  coyote:0,
+
+  spawnX:80,
+  spawnY:450
+
+};
+
+
+/* =====================================================
+   ECHO
+===================================================== */
+
+/*
+  ECHO는 최근 행동을 저장해 두었다가
+  다시 재생하는 과거의 플레이어다.
+*/
+
+let echo = null;
+
+
+/*
+  ECHO 기록 시간
+
+  360프레임 = 약 6초
+*/
+const MAX_RECORD = 360;
+
+
+/*
+  현재 플레이어 행동 기록
+*/
+let actionHistory = [];
+
+
+/*
+  E를 한 번 사용했는지 체크
+*/
+let echoUsedThisLife = false;
+
+
+/* =====================================================
+   LEVEL DATA
+===================================================== */
+
+const LEVELS = {
+
+1:{
+
+  name:"TIME BASICS",
+
+  width:2800,
+
+  start:{
+    x:80,
+    y:450
+  },
+
+  platforms:[
+
+    {x:0,y:540,w:650,h:80},
+
+    {x:820,y:540,w:600,h:80},
+
+    {x:1590,y:540,w:650,h:80},
+
+    {x:2390,y:540,w:410,h:80},
+
+    {x:250,y:430,w:180,h:20},
+
+    {x:930,y:420,w:180,h:20},
+
+    {x:1740,y:400,w:190,h:20}
+
+  ],
+
+  lasers:[
+
+    {x:650},
+
+    {x:1420},
+
+    {x:2240}
+
+  ],
+
+  switches:[
+
+    {
+      x:350,
+      y:394,
+      active:false
+    },
+
+    {
+      x:1000,
+      y:384,
+      active:false
+    },
+
+    {
+      x:1820,
+      y:364,
+      active:false
+    }
+
+  ],
+
+  door:{
+    x:2700,
+    y:450,
+    w:60,
+    h:90
+  }
+
+},
+
+
+2:{
+
+  name:"TIME LOOP",
+
+  width:3300,
+
+  start:{
+    x:80,
+    y:450
+  },
+
+  platforms:[
+
+    {x:0,y:540,w:500,h:80},
+
+    {x:670,y:540,w:580,h:80},
+
+    {x:1450,y:540,w:500,h:80},
+
+    {x:2150,y:540,w:1150,h:80},
+
+    {x:220,y:420,w:170,h:20},
+
+    {x:760,y:400,w:180,h:20},
+
+    {x:1060,y:330,w:180,h:20},
+
+    {x:1570,y:400,w:180,h:20},
+
+    {x:2300,y:380,w:190,h:20}
+
+  ],
+
+  lasers:[
+
+    {x:500},
+
+    {x:1250},
+
+    {x:1950}
+
+  ],
+
+  switches:[
+
+    {
+      x:300,
+      y:384,
+      active:false
+    },
+
+    {
+      x:850,
+      y:364,
+      active:false
+    },
+
+    {
+      x:1150,
+      y:294,
+      active:false
+    },
+
+    {
+      x:1660,
+      y:364,
+      active:false
+    }
+
+  ],
+
+  door:{
+    x:3180,
+    y:450,
+    w:60,
+    h:90
+  }
+
+},
+
+
+3:{
+
+  name:"PARADOX",
+
+  width:3600,
+
+  start:{
+    x:80,
+    y:450
+  },
+
+  platforms:[
+
+    {x:0,y:540,w:430,h:80},
+
+    {x:590,y:540,w:400,h:80},
+
+    {x:1160,y:540,w:440,h:80},
+
+    {x:1770,y:540,w:420,h:80},
+
+    {x:2360,y:540,w:1240,h:80},
+
+    {x:170,y:410,w:150,h:20},
+
+    {x:670,y:390,w:160,h:20},
+
+    {x:1240,y:370,w:170,h:20},
+
+    {x:1850,y:400,w:160,h:20},
+
+    {x:2480,y:390,w:180,h:20},
+
+    {x:2780,y:320,w:180,h:20},
+
+    {x:3100,y:390,w:170,h:20}
+
+  ],
+
+  lasers:[
+
+    {x:430},
+
+    {x:990},
+
+    {x:1600},
+
+    {x:2190},
+
+    {x:3300}
+
+  ],
+
+  switches:[
+
+    {
+      x:245,
+      y:374,
+      active:false
+    },
+
+    {
+      x:750,
+      y:344,
+      active:false
+    },
+
+    {
+      x:1320,
+      y:324,
+      active:false
+    },
+
+    {
+      x:1920,
+      y:374,
+      active:false
+    },
+
+    {
+      x:2570,
+      y:344,
+      active:false
+    },
+
+    {
+      x:3180,
+      y:344,
+      active:false
+    }
+
+  ],
+
+  door:{
+    x:3480,
+    y:450,
+    w:60,
+    h:90
+  }
+
+}
+
+};
+
+
+/* =====================================================
+   INPUT
+===================================================== */
+
+let keys = {};
+
+let touchLeft = false;
+let touchRight = false;
+
+let previousJump = false;
+
+
+function isLeft(){
+
+  return (
+    keys["KeyA"] ||
+    keys["ArrowLeft"] ||
+    touchLeft
+  );
+
+}
+
+
+function isRight(){
+
+  return (
+    keys["KeyD"] ||
+    keys["ArrowRight"] ||
+    touchRight
+  );
+
+}
+
+
+function isJump(){
+
+  return (
+    keys["Space"] ||
+    keys["ArrowUp"]
+  );
+
+}
+
+
+/* =====================================================
+   START LEVEL
+===================================================== */
+
+function createLevel(id){
+
+  levelId = id;
+
+  level =
+    LEVELS[id];
+
+
+  platforms =
+    level.platforms.map(
+      p=>({...p})
+    );
+
+
+  lasers =
+    level.lasers.map(
+      (l,i)=>({
+
+        x:l.x,
+
+        w:18,
+
+        active:true,
+
+        phase:i*1.8
+
+      })
+    );
+
+
+  switches =
+    level.switches.map(
+      s=>({
+
+        ...s,
+
+        active:false
+
+      })
+    );
+
+
+  door =
+    {...level.door};
+
+
+  player.x =
+    level.start.x;
+
+  player.y =
+    level.start.y;
+
+  player.spawnX =
+    player.x;
+
+  player.spawnY =
+    player.y;
+
+  player.vx=0;
+  player.vy=0;
+
+  player.grounded=false;
+  player.coyote=0;
+
+
+  cameraX=0;
+
+  frame=0;
+
+  particles=[];
+
+  actionHistory=[];
+
+  echo=null;
+
+  echoUsedThisLife=false;
+
+  timeStopped=false;
+
+  gameClear=false;
+
+
+  title.textContent =
+    "LEVEL 0"+
+    id+
+    " · "+
+    level.name;
+
+
+  message.textContent =
+    "움직인 뒤 E를 눌러 ECHO를 만들어 보세요.";
+
+}
+
+
+/* =====================================================
+   START
+===================================================== */
+
+function startLevel(id){
+
+  if(id>unlocked)
+    return;
+
+
+  createLevel(id);
+
+
+  mode="game";
+
+
+  select.classList.add(
+    "hidden"
+  );
+
+  hud.classList.remove(
+    "hidden"
+  );
+
+  mobile.classList.remove(
+    "hidden"
+  );
+
+}
+
+
+/* =====================================================
+   LEVEL BUTTON
+===================================================== */
+
+document
+  .querySelectorAll(".levelBtn")
+  .forEach(btn=>{
+
+    btn.addEventListener(
+      "click",
+      ()=>{
+
+        const id =
+          Number(
+            btn.dataset.level
+          );
+
+        if(id<=unlocked){
+
+          startLevel(id);
+
+        }
+
+      }
+    );
+
+  });
+
+
+/* =====================================================
+   RESET
+===================================================== */
+
+document
+  .getElementById("reset")
+  .addEventListener(
+    "click",
+    ()=>{
+
+      unlocked=1;
+
+      saveProgress();
+
+      refreshButtons();
+
+    }
+  );
+
+
+/* =====================================================
+   MENU
+===================================================== */
+
+function openMenu(){
+
+  mode="select";
+
+  timeStopped=false;
+
+  hud.classList.add(
+    "hidden"
+  );
+
+  mobile.classList.add(
+    "hidden"
+  );
+
+  select.classList.remove(
+    "hidden"
+  );
+
+  refreshButtons();
+
+}
+
+
+document
+  .getElementById("menuBtn")
+  .addEventListener(
+    "click",
+    openMenu
+  );
+
+
+/* =====================================================
+   KEYBOARD
+===================================================== */
+
+addEventListener(
+  "keydown",
+  e=>{
+
+    keys[e.code]=true;
+
+
+    if(
+      [
+        "Space",
+        "ArrowLeft",
+        "ArrowRight",
+        "ArrowUp"
+      ].includes(e.code)
+    ){
+
+      e.preventDefault();
+
+    }
+
+
+    if(e.code==="Escape"){
+
+      openMenu();
+
+    }
+
+
+    if(mode!=="game")
+      return;
+
+
+    if(e.code==="KeyQ"){
+
+      timeStopped=true;
+
+    }
+
+
+    /*
+      ECHO 생성
+    */
+
+    if(
+      e.code==="KeyE" &&
+      !e.repeat
+    ){
+
+      createEcho();
+
+    }
+
+
+    if(e.code==="KeyR"){
+
+      respawn();
+
+    }
+
+  }
+);
+
+
+addEventListener(
+  "keyup",
+  e=>{
+
+    keys[e.code]=false;
+
+
+    if(e.code==="KeyQ"){
+
+      timeStopped=false;
+
+    }
+
+  }
+);
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+function hold(
+  element,
+  down,
+  up
+){
+
+  element.addEventListener(
+    "pointerdown",
+    e=>{
+
+      e.preventDefault();
+
+      down();
+
+    }
+  );
+
+
+  element.addEventListener(
+    "pointerup",
+    e=>{
+
+      e.preventDefault();
+
+      up();
+
+    }
+  );
+
+
+  element.addEventListener(
+    "pointercancel",
+    up
+  );
+
+}
+
+
+hold(
+  document.getElementById("left"),
+  ()=>touchLeft=true,
+  ()=>touchLeft=false
+);
+
+
+hold(
+  document.getElementById("right"),
+  ()=>touchRight=true,
+  ()=>touchRight=false
+);
+
+
+document
+  .getElementById("jump")
+  .addEventListener(
+    "pointerdown",
+    ()=>{
+      doJump();
+    }
+  );
+
+
+hold(
+  document.getElementById("stop"),
+  ()=>timeStopped=true,
+  ()=>timeStopped=false
+);
+
+
+document
+  .getElementById("echo")
+  .addEventListener(
+    "pointerdown",
+    ()=>{
+      createEcho();
+    }
+  );
+
+
+/* =====================================================
+   JUMP
+===================================================== */
+
+function doJump(){
+
+  if(
+    player.grounded ||
+    player.coyote>0
+  ){
+
+    player.vy =
+      -player.jump;
+
+    player.grounded=false;
+
+    player.coyote=0;
+
+
+    for(
+      let i=0;
+      i<8;
+      i++
+    ){
+
+      particles.push({
+
+        x:
+          player.x+
+          player.w/2,
+
+        y:
+          player.y+
+          player.h,
+
+        vx:
+          (Math.random()-.5)*3,
+
+        vy:
+          -Math.random()*2,
+
+        life:25
+
+      });
+
+    }
+
+  }
+
+}
+
+
+/* =====================================================
+   PLAYER
+===================================================== */
+
+function updatePlayer(){
+
+  let dir=0;
+
+
+  if(isLeft())
+    dir--;
+
+
+  if(isRight())
+    dir++;
+
+
+  player.vx +=
+    (
+      dir*player.speed-
+      player.vx
+    )*.22;
+
+
+  if(dir===0){
+
+    player.vx*=.8;
+
+  }
+
+
+  const jumping =
+    isJump();
+
+
+  if(
+    jumping &&
+    !previousJump
+  ){
+
+    doJump();
+
+  }
+
+
+  previousJump =
+    jumping;
+
+
+  player.vy += .65;
+
+
+  if(player.vy>18)
+    player.vy=18;
+
+
+  /*
+    X
+  */
+
+  player.x +=
+    player.vx;
+
+
+  if(player.x<0){
+
+    player.x=0;
+
+    player.vx=0;
+
+  }
+
+
+  if(
+    player.x+
+    player.w>
+    level.width
+  ){
+
+    player.x=
+      level.width-
+      player.w;
+
+    player.vx=0;
+
+  }
+
+
+  /*
+    Y
+  */
+
+  const oldBottom =
+    player.y+
+    player.h;
+
+
+  player.y +=
+    player.vy;
+
+
+  player.grounded=false;
+
+
+  for(const p of platforms){
+
+    if(
+
+      player.x+
+      player.w>
+      p.x &&
+
+      player.x<
+      p.x+p.w &&
+
+      oldBottom<=p.y &&
+
+      player.y+
+      player.h>=p.y &&
+
+      player.vy>=0
+
+    ){
+
+      player.y=
+        p.y-player.h;
+
+      player.vy=0;
+
+      player.grounded=true;
+
+    }
+
+  }
+
+
+  if(player.grounded){
+
+    player.coyote=8;
+
+  }else{
+
+    player.coyote--;
+
+  }
+
+
+  if(
+    player.y>
+    H+300
+  ){
+
+    respawn();
+
+  }
+
+}
+
+
+/* =====================================================
+   RECORD PLAYER
+===================================================== */
+
+/*
+  매 프레임 현재 플레이어의 상태를 저장한다.
+
+  E를 누르면 이 배열을 ECHO가 재생한다.
+*/
+
+function recordPlayer(){
+
+  actionHistory.push({
+
+    x:player.x,
+
+    y:player.y,
+
+    vx:player.vx,
+
+    vy:player.vy,
+
+    grounded:
+      player.grounded
+
+  });
+
+
+  if(
+    actionHistory.length>
+    MAX_RECORD
+  ){
+
+    actionHistory.shift();
+
+  }
+
+}
+
+
+/* =====================================================
+   CREATE ECHO
+===================================================== */
+
+function createEcho(){
+
+  /*
+    최소한 조금 움직인 뒤에만 생성
+  */
+
+  if(
+    actionHistory.length<20
+  ){
+
+    message.textContent =
+      "조금 움직인 다음 E를 눌러주세요.";
+
+    return;
+
+  }
+
+
+  /*
+    현재 플레이어가 있는 위치부터
+    과거 행동을 재생하도록 만든다.
+  */
+
+  echo={
+
+    frames:
+      actionHistory.map(
+        state=>({...state})
+      ),
+
+    index:0,
+
+    x:
+      actionHistory[0].x,
+
+    y:
+      actionHistory[0].y,
+
+    w:30,
+
+    h:48,
+
+    active:true,
+
+    switchHits:0
+
+  };
+
+
+  /*
+    기존 기록은 초기화.
+    이제 새로운 현재 행동을 기록한다.
+  */
+
+  actionHistory=[];
+
+  echoUsedThisLife=true;
+
+
+  message.textContent =
+    "ECHO 생성 · 과거의 내가 움직이기 시작했습니다.";
+
+
+  /*
+    생성 효과
+  */
+
+  for(let i=0;i<25;i++){
+
+    particles.push({
+
+      x:echo.x+15,
+
+      y:echo.y+24,
+
+      vx:
+        (Math.random()-.5)*6,
+
+      vy:
+        (Math.random()-.5)*6,
+
+      life:35
+
+    });
+
+  }
+
+}
+
+
+/* =====================================================
+   ECHO UPDATE
+===================================================== */
+
+function updateEcho(){
+
+  if(!echo)
+    return;
+
+
+  if(!echo.active)
+    return;
+
+
+  /*
+    ECHO는 시간 정지 중에는 같이 멈춘다.
+  */
+
+  if(timeStopped)
+    return;
+
+
+  if(
+    echo.index >=
+    echo.frames.length
+  ){
+
+    echo.active=false;
+
+    message.textContent =
+      "ECHO의 시간이 끝났습니다. E를 다시 사용할 수 있습니다.";
+
+    return;
+
+  }
+
+
+  const state =
+    echo.frames[
+      echo.index
+    ];
+
+
+  echo.x =
+    state.x;
+
+  echo.y =
+    state.y;
+
+
+  /*
+    스위치와 충돌
+  */
+
+  checkEchoSwitches();
+
+
+  echo.index++;
+
+}
+
+
+/* =====================================================
+   ECHO SWITCH
+===================================================== */
+
+function checkEchoSwitches(){
+
+  if(!echo)
+    return;
+
+  if(!echo.active)
+    return;
+
+
+  for(const s of switches){
+
+    /*
+      현재 플레이어가 이미 누른 스위치는 무시
+    */
+
+    if(s.active)
+      continue;
+
+
+    const box={
+
+      x:s.x-18,
+
+      y:s.y-18,
+
+      w:36,
+
+      h:36
+
+    };
+
+
+    if(
+
+      echo.x+
+      echo.w>
+      box.x &&
+
+      echo.x<
+      box.x+
+      box.w &&
+
+      echo.y+
+      echo.h>
+      box.y &&
+
+      echo.y<
+      box.y+
+      box.h
+
+    ){
+
+      s.active=true;
+
+      echo.switchHits++;
+
+
+      /*
+        ECHO 스위치 효과
+      */
+
+      for(let i=0;i<20;i++){
+
+        particles.push({
+
+          x:s.x,
+
+          y:s.y,
+
+          vx:
+            (Math.random()-.5)*5,
+
+          vy:
+            (Math.random()-.5)*5,
+
+          life:35
+
+        });
+
+      }
+
+
+      message.textContent =
+        "ECHO가 과거의 스위치를 활성화했습니다!";
+
+    }
+
+  }
+
+}
+
+
+/* =====================================================
+   LASERS
+===================================================== */
+
+function updateLasers(){
+
+  /*
+    Q를 누르면 레이저 시간이 멈춘다.
+  */
+
+  if(timeStopped)
+    return;
+
+
+  for(const laser of lasers){
+
+    laser.active =
+      Math.sin(
+        frame*.055+
+        laser.phase
+      )>-.15;
+
+  }
+
+}
+
+
+/* =====================================================
+   LASER COLLISION
+===================================================== */
+
+function checkLasers(){
+
+  /*
+    플레이어만 레이저에 영향을 받는다.
+    ECHO는 과거의 존재라서 레이저를 무시한다.
+  */
+
+  for(const laser of lasers){
+
+    if(!laser.active)
+      continue;
+
+
+    const wall={
+
+      x:
+        laser.x-10,
+
+      y:0,
+
+      w:
+        laser.w+20,
+
+      h:
+        H+500
+
+    };
+
+
+    if(
+
+      player.x+
+      player.w>
+      wall.x &&
+
+      player.x<
+      wall.x+
+      wall.w &&
+
+      player.y<
+      wall.y+
+      wall.h &&
+
+      player.y+
+      player.h>
+      wall.y
+
+    ){
+
+      respawn();
+
+      return;
+
+    }
+
+  }
+
+}
+
+
+/* =====================================================
+   SWITCH
+===================================================== */
+
+function updateSwitches(){
+
+  for(const s of switches){
+
+    if(s.active)
+      continue;
+
+
+    const box={
+
+      x:
+        s.x-17,
+
+      y:
+        s.y-17,
+
+      w:34,
+
+      h:34
+
+    };
+
+
+    if(
+
+      player.x+
+      player.w>
+      box.x &&
+
+      player.x<
+      box.x+
+      box.w &&
+
+      player.y+
+      player.h>
+      box.y &&
+
+      player.y<
+      box.y+
+      box.h
+
+    ){
+
+      s.active=true;
+
+
+      for(let i=0;i<15;i++){
+
+        particles.push({
+
+          x:s.x,
+
+          y:s.y,
+
+          vx:
+            (Math.random()-.5)*5,
+
+          vy:
+            (Math.random()-.5)*5,
+
+          life:30
+
+        });
+
+      }
+
+    }
+
+  }
+
+}
+
+
+/* =====================================================
+   DOOR
+===================================================== */
+
+function allSwitches(){
+
+  return switches.every(
+    s=>s.active
+  );
+
+}
+
+
+function checkDoor(){
+
+  if(!allSwitches())
+    return;
+
+
+  if(
+
+    player.x+
+    player.w>
+    door.x &&
+
+    player.x<
+    door.x+
+    door.w &&
+
+    player.y+
+    player.h>
+    door.y &&
+
+    player.y<
+    door.y+
+    door.h
+
+  ){
+
+    clearLevel();
+
+  }
+
+}
+
+
+/* =====================================================
+   CLEAR
+===================================================== */
+
+function clearLevel(){
+
+  if(gameClear)
+    return;
+
+
+  gameClear=true;
+
+
+  if(
+    levelId===
+    unlocked &&
+    unlocked<3
+  ){
+
+    unlocked++;
+
+    saveProgress();
+
+  }
+
+
+  message.textContent =
+    "✓ LEVEL CLEAR";
+
+
+  setTimeout(()=>{
+
+    if(levelId<3){
+
+      startLevel(
+        levelId+1
+      );
+
+    }else{
+
+      openMenu();
+
+    }
+
+  },1200);
+
+}
+
+
+/* =====================================================
+   RESPAWN
+===================================================== */
+
+function respawn(){
+
+  player.x=
+    player.spawnX;
+
+  player.y=
+    player.spawnY;
+
+  player.vx=0;
+
+  player.vy=0;
+
+  player.grounded=false;
+
+  timeStopped=false;
+
+  history=[];
+
+  actionHistory=[];
+
+  /*
+    죽으면 ECHO도 사라진다.
+  */
+
+  echo=null;
+
+  echoUsedThisLife=false;
+
+
+  message.textContent =
+    "⚠ 실패 · ECHO와 함께 다시 시작합니다.";
+
+}
+
+
+/* =====================================================
+   PARTICLES
+===================================================== */
+
+function updateParticles(){
+
+  for(const p of particles){
+
+    p.x+=p.vx;
+
+    p.y+=p.vy;
+
+    p.vy+=.08;
+
+    p.life--;
+
+  }
+
+
+  particles =
+    particles.filter(
+      p=>p.life>0
+    );
+
+}
+
+
+/* =====================================================
+   CAMERA
+===================================================== */
+
+function updateCamera(){
+
+  const target =
+    player.x-
+    W*.4;
+
+
+  cameraX +=
+    (
+      target-
+      cameraX
+    )*.1;
+
+
+  if(cameraX<0)
+    cameraX=0;
+
+
+  const max =
+    Math.max(
+      0,
+      level.width-W
+    );
+
+
+  if(cameraX>max)
+    cameraX=max;
+
+}
+
+
+function sx(x){
+
+  return x-cameraX;
+
+}
+
+
+/* =====================================================
+   BACKGROUND
+===================================================== */
+
+function drawBackground(){
+
+  const gradient =
+    ctx.createLinearGradient(
+      0,0,
+      0,H
+    );
+
+
+  gradient.addColorStop(
+    0,
+    "#050817"
+  );
+
+
+  gradient.addColorStop(
+    1,
+    "#0b1024"
+  );
+
+
+  ctx.fillStyle =
+    gradient;
+
+
+  ctx.fillRect(
+    0,
+    0,
+    W,
+    H
+  );
+
+
+  /*
+    별
+  */
+
+  for(
+    let i=0;
+    i<100;
+    i++
+  ){
+
+    let x =
+      (
+        i*137-
+        cameraX*.15
+      )%(W+100);
+
+
+    if(x<0)
+      x+=W+100;
+
+
+    const y =
+      (i*73)%H;
+
+
+    ctx.fillStyle =
+      "rgba(150,170,255,.35)";
+
+
+    ctx.fillRect(
+      x,
+      y,
+      i%5===0?2:1,
+      i%5===0?2:1
+    );
+
+  }
+
+
+  /*
+    그리드
+  */
+
+  ctx.strokeStyle =
+    "rgba(90,110,210,.07)";
+
+
+  const grid=80;
+
+
+  const offset =
+    -(
+      cameraX*.25%
+      grid
+    );
+
+
+  for(
+    let x=offset;
+    x<W;
+    x+=grid
+  ){
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      x,
+      0
+    );
+
+    ctx.lineTo(
+      x,
+      H
+    );
+
+    ctx.stroke();
+
+  }
+
+}
+
+
+/* =====================================================
+   PLATFORM DRAW
+===================================================== */
+
+function drawPlatforms(){
+
+  for(const p of platforms){
+
+    const x =
+      sx(p.x);
+
+
+    if(
+      x+p.w<0 ||
+      x>W
+    )
+      continue;
+
+
+    ctx.fillStyle =
+      "#151c3b";
+
+
+    ctx.fillRect(
+      x,
+      p.y,
+      p.w,
+      p.h
+    );
+
+
+    ctx.fillStyle =
+      "#596de0";
+
+
+    ctx.fillRect(
+      x,
+      p.y,
+      p.w,
+      3
+    );
+
+
+    ctx.fillStyle =
+      "rgba(90,110,230,.08)";
+
+
+    ctx.fillRect(
+      x,
+      p.y+3,
+      p.w,
+      p.h-3
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   LASER DRAW
+===================================================== */
+
+function drawLasers(){
+
+  for(const laser of lasers){
+
+    const x =
+      sx(laser.x);
+
+
+    if(
+      x+laser.w<0 ||
+      x>W
+    )
+      continue;
+
+
+    if(!laser.active){
+
+      ctx.fillStyle =
+        "rgba(80,120,255,.08)";
+
+
+      ctx.fillRect(
+        x-10,
+        0,
+        laser.w+20,
+        H
+      );
+
+
+      ctx.fillStyle =
+        "rgba(100,150,255,.25)";
+
+
+      ctx.fillRect(
+        x,
+        0,
+        laser.w,
+        H
+      );
+
+
+      continue;
+
+    }
+
+
+    ctx.save();
+
+    ctx.shadowBlur=30;
+
+    ctx.shadowColor =
+      "#ff174f";
+
+    ctx.fillStyle =
+      "#ff174f";
+
+
+    ctx.fillRect(
+      x,
+      0,
+      laser.w,
+      H
+    );
+
+
+    ctx.restore();
+
+
+    ctx.fillStyle =
+      "rgba(255,20,70,.13)";
+
+
+    ctx.fillRect(
+      x-25,
+      0,
+      laser.w+50,
+      H
+    );
+
+
+    ctx.fillStyle="#fff";
+
+
+    ctx.fillRect(
+      x+6,
+      0,
+      3,
+      H
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   SWITCH DRAW
+===================================================== */
+
+function drawSwitches(){
+
+  for(const s of switches){
+
+    const x =
+      sx(s.x);
+
+
+    ctx.save();
+
+
+    ctx.shadowBlur=22;
+
+
+    ctx.shadowColor =
+      s.active ?
+      "#43ffae":
+      "#6578ff";
+
+
+    ctx.fillStyle =
+      s.active ?
+      "#43ffae":
+      "#6578ff";
+
+
+    ctx.beginPath();
+
+
+    ctx.arc(
+      x,
+      s.y,
+      12,
+      0,
+      Math.PI*2
+    );
+
+
+    ctx.fill();
+
+
+    ctx.fillStyle="#fff";
+
+
+    ctx.beginPath();
+
+
+    ctx.arc(
+      x,
+      s.y,
+      4,
+      0,
+      Math.PI*2
+    );
+
+
+    ctx.fill();
+
+
+    ctx.restore();
+
+  }
+
+}
+
+
+/* =====================================================
+   DOOR DRAW
+===================================================== */
+
+function drawDoor(){
+
+  const x =
+    sx(door.x);
+
+
+  const open =
+    allSwitches();
+
+
+  ctx.save();
+
+
+  ctx.shadowBlur=25;
+
+
+  ctx.shadowColor =
+    open ?
+    "#43ffae":
+    "#586cff";
+
+
+  ctx.fillStyle =
+    open ?
+    "#183f34":
+    "#202752";
+
+
+  ctx.fillRect(
+    x,
+    door.y,
+    door.w,
+    door.h
+  );
+
+
+  ctx.strokeStyle =
+    open ?
+    "#43ffae":
+    "#6679ff";
+
+
+  ctx.lineWidth=3;
+
+
+  ctx.strokeRect(
+    x,
+    door.y,
+    door.w,
+    door.h
+  );
+
+
+  ctx.restore();
+
+
+  ctx.textAlign="center";
+
+  ctx.font =
+    "bold 10px Arial";
+
+  ctx.fillStyle="#fff";
+
+
+  ctx.fillText(
+    open ?
+    "EXIT":
+    "LOCK",
+
+    x+
+    door.w/2,
+
+    door.y+48
+  );
+
+}
+
+
+/* =====================================================
+   PLAYER DRAW
+===================================================== */
+
+function drawPlayer(){
+
+  drawCharacter(
+    player.x,
+    player.y,
+    false
+  );
+
+}
+
+
+/* =====================================================
+   ECHO DRAW
+===================================================== */
+
+function drawEcho(){
+
+  if(!echo)
+    return;
+
+
+  if(!echo.active)
+    return;
+
+
+  const x =
+    sx(echo.x);
+
+  const y =
+    echo.y;
+
+
+  /*
+    ECHO 잔상
+  */
+
+  for(let i=1;i<=3;i++){
+
+    const index =
+      echo.index-i;
+
+
+    if(index<0)
+      continue;
+
+
+    const old =
+      echo.frames[index];
+
+
+    if(!old)
+      continue;
+
+
+    ctx.fillStyle =
+      "rgba(80,150,255,"+
+      (.06*(4-i))+
+      ")";
+
+
+    ctx.fillRect(
+      sx(old.x),
+      old.y,
+      echo.w,
+      echo.h
+    );
+
+  }
+
+
+  drawCharacter(
+    echo.x,
+    echo.y,
+    true
+  );
+
+}
+
+
+/* =====================================================
+   CHARACTER DRAW
+===================================================== */
+
+function drawCharacter(
+  px,
+  py,
+  isEcho
+){
+
+  const x =
+    sx(px);
+
+  const y =
+    py;
+
+
+  ctx.save();
+
+
+  if(isEcho){
+
+    /*
+      ECHO는 파란색
+    */
+
+    ctx.globalAlpha=.7;
+
+    ctx.shadowBlur=25;
+
+    ctx.shadowColor =
+      "#4ba7ff";
+
+  }else{
+
+    ctx.shadowBlur =
+      timeStopped ?
+      30:
+      18;
+
+    ctx.shadowColor =
+      timeStopped ?
+      "#58aaff":
+      "#6579ff";
+
+  }
+
+
+  /*
+    몸
+  */
+
+  ctx.fillStyle =
+    isEcho ?
+    "#55baff":
+    "#eef2ff";
+
+
+  ctx.fillRect(
+    x,
+    y,
+    30,
+    48
+  );
+
+
+  /*
+    머리
+  */
+
+  ctx.fillStyle =
+    isEcho ?
+    "#88d5ff":
+    "#8296ff";
+
+
+  ctx.fillRect(
+    x+4,
+    y+5,
+    22,
+    14
+  );
+
+
+  /*
+    코어
+  */
+
+  ctx.fillStyle =
+    isEcho ?
+    "#d2f5ff":
+    timeStopped ?
+    "#5bd0ff":
+    "#6176ff";
+
+
+  ctx.fillRect(
+    x+9,
+    y+24,
+    12,
+    12
+  );
+
+
+  /*
+    다리
+  */
+
+  ctx.fillStyle =
+    isEcho ?
+    "#28608a":
+    "#343e70";
+
+
+  ctx.fillRect(
+    x+3,
+    y+43,
+    9,
+    5
+  );
+
+
+  ctx.fillRect(
+    x+18,
+    y+43,
+    9,
+    5
+  );
+
+
+  ctx.restore();
+
+
+  /*
+    ECHO 표시
+  */
+
+  if(isEcho){
+
+    ctx.fillStyle =
+      "#74c8ff";
+
+    ctx.font =
+      "bold 9px Arial";
+
+    ctx.textAlign="center";
+
+    ctx.fillText(
+      "ECHO",
+      x+15,
+      y-8
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   PARTICLES
+===================================================== */
+
+function drawParticles(){
+
+  for(const p of particles){
+
+    ctx.globalAlpha =
+      Math.max(
+        0,
+        p.life/35
+      );
+
+
+    ctx.fillStyle =
+      "#6c8cff";
+
+
+    ctx.fillRect(
+      sx(p.x),
+      p.y,
+      4,
+      4
+    );
+
+  }
+
+
+  ctx.globalAlpha=1;
+
+}
+
+
+/* =====================================================
+   TIME STOP EFFECT
+===================================================== */
+
+function drawTimeStop(){
+
+  if(!timeStopped)
+    return;
+
+
+  ctx.strokeStyle =
+    "rgba(80,160,255,.5)";
+
+
+  ctx.lineWidth=4;
+
+
+  ctx.strokeRect(
+    2,
+    2,
+    W-4,
+    H-4
+  );
+
+
+  ctx.strokeStyle =
+    "rgba(100,170,255,.18)";
+
+
+  ctx.lineWidth=1;
+
+
+  for(
+    let i=0;
+    i<10;
+    i++
+  ){
+
+    const x =
+      (
+        i*190+
+        frame*1.2
+      )%W;
+
+
+    ctx.beginPath();
+
+
+    ctx.moveTo(
+      x,
+      0
+    );
+
+
+    ctx.lineTo(
+      x-120,
+      H
+    );
+
+
+    ctx.stroke();
+
+  }
+
+}
+
+
+/* =====================================================
+   DRAW
+===================================================== */
+
+function draw(){
+
+  drawBackground();
+
+
+  if(mode!=="game")
+    return;
+
+
+  drawPlatforms();
+
+  drawLasers();
+
+  drawSwitches();
+
+  drawDoor();
+
+  drawParticles();
+
+  /*
+    ECHO를 먼저 그려서
+    플레이어가 앞에 보이게 한다.
+  */
+
+  drawEcho();
+
+  drawPlayer();
+
+  drawTimeStop();
+
+}
+
+
+/* =====================================================
+   UPDATE
+===================================================== */
+
+function update(){
+
+  if(mode!=="game")
+    return;
+
+
+  if(gameClear)
+    return;
+
+
+  /*
+    ----------------------------------------
+    플레이어
+    ----------------------------------------
+
+    Q를 눌러도 플레이어는 계속 움직인다.
+  */
+
+  updatePlayer();
+
+
+  /*
+    ----------------------------------------
+    ECHO
+    ----------------------------------------
+  */
+
+  updateEcho();
+
+
+  /*
+    ----------------------------------------
+    시간
+    ----------------------------------------
+  */
+
+  if(!timeStopped){
+
+    updateLasers();
+
+    updateSwitches();
+
+    /*
+      현재 플레이어의 행동을 계속 기록한다.
+    */
+
+    recordPlayer();
+
+    frame++;
+
+  }
+
+
+  /*
+    ----------------------------------------
+    충돌
+    ----------------------------------------
+  */
+
+  checkLasers();
+
+  checkDoor();
+
+
+  updateParticles();
+
+  updateCamera();
+
+
+  /*
+    ----------------------------------------
+    HUD
+    ----------------------------------------
+  */
+
+  if(timeStopped){
+
+    message.textContent =
+      "⏸ TIME STOP · 플레이어는 움직일 수 있습니다.";
+
+  }else if(echo && echo.active){
+
+    message.textContent =
+      "ECHO가 과거의 행동을 재생하고 있습니다.";
+
+  }else if(!allSwitches()){
+
+    message.textContent =
+      "E로 ECHO를 만들어 스위치를 대신 눌러보세요.";
+
+  }else{
+
+    message.textContent =
+      "✓ 모든 스위치 활성화 · EXIT로 이동하세요.";
+
+  }
+
+}
+
+
+/* =====================================================
+   LOOP
+===================================================== */
+
+function loop(){
+
+  update();
+
+  draw();
+
+  requestAnimationFrame(
+    loop
+  );
+
+}
+
+
+loop();
+
+
+/* =====================================================
+   INITIAL
+===================================================== */
+
+openMenu();
+
+</script>
+
+</body>
+</html>
