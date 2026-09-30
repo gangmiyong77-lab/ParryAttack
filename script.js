@@ -9,14 +9,15 @@ const floatingCdEl = document.getElementById('floating-cd');
 let isPaused = false;
 
 // ==========================================
-// ★ 신규: 사운드 시스템 설정 ★
+// ★ 수정: 명확한 상대 경로(./) 사용 ★
 // ==========================================
-const audioDead = new Audio('Sounds/Dead.wav');
-const audioAttack1 = new Audio('Sounds/Attack1.wav');
-const audioAttack2 = new Audio('Sounds/Attack2.wav');
-const audioParry = new Audio('Sounds/Parry.wav');
-const audioParryed = new Audio('Sounds/Parryed.wav');
-const audioSwing = new Audio('Sounds/Swing.wav');
+// './' 는 'index.html이 있는 현재 폴더'를 의미합니다.
+const audioDead = new Audio('./Dead.mp3');
+const audioAttack1 = new Audio('./Attack1.mp3');
+const audioAttack2 = new Audio('./Attack2.mp3');
+const audioParry = new Audio('./Parry.mp3');
+const audioParryed = new Audio('./Parryed.mp3');
+const audioSwing = new Audio('./Swing.mp3');
 
 function playSound(type) {
     let sound;
