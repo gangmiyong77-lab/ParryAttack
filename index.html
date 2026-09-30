@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Boss Fight: Parry & Slash</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- ★ 수정됨: 보스 UI (자바스크립트로 위치 이동) ★ -->
+        <div id="boss-ui">
+            <div id="boss-name" class="boss-name">BOSS (Lv. 1)</div>
+            <div class="boss-bar-bg"><div id="boss-hp" class="bar hp-fill boss-hp-fill"></div></div>
+        </div>
+
+        <!-- 플레이어 UI -->
+        <div id="player-ui">
+            <div class="level-text">Lv. <span id="player-level">1</span></div>
+            <div class="bar-bg hp-bg"><div id="player-hp" class="bar hp-fill"></div></div>
+            <div class="bar-bg exp-bg"><div id="player-exp" class="bar exp-fill"></div></div>
+            <div id="parry-status">패링 준비 완료</div>
+            <div id="skill-status" class="hidden">스킬 (Space / 버튼): 준비 완료!</div>
+        </div>
+
+        <!-- 캐릭터들 -->
+        <div id="player" class="character idle">
+            <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+            <div class="sword" id="player-sword"></div>
+            <!-- ★ 신규: 캐릭터 옆에 따라다니는 패링 쿨타임 텍스트 ★ -->
+            <div id="floating-cd"></div>
+        </div>
+
+        <div id="boss" class="character idle">
+            <div class="eyes"><div class="eye boss-eye"></div><div class="eye boss-eye"></div></div>
+            <div class="sword boss-sword" id="boss-sword"></div>
+        </div>
+
+        <!-- 모바일 컨트롤러 -->
+        <div id="mobile-controls">
+            <div class="dpad">
+                <button id="btn-up" class="ctrl-btn dpad-btn">W</button>
+                <div class="dpad-middle">
+                    <button id="btn-left" class="ctrl-btn dpad-btn">A</button>
+                    <button id="btn-down" class="ctrl-btn dpad-btn">S</button>
+                    <button id="btn-right" class="ctrl-btn dpad-btn">D</button>
+                </div>
+            </div>
+            <div class="action-btns">
+                <button id="btn-attack" class="ctrl-btn action-btn">공격</button>
+                <button id="btn-parry" class="ctrl-btn action-btn">패링</button>
+                <button id="btn-skill" class="ctrl-btn action-btn hidden">스킬</button>
+            </div>
+        </div>
+
+        <div id="level-up-modal" class="modal hidden">
+            <h2>레벨 업! 증강을 선택하세요</h2>
+            <div class="augments">
+                <button onclick="selectAugment('damage')">🗡️ 공격력 증가 (데미지 업)</button>
+                <button onclick="selectAugment('cooldown')">⚡ 공격 속도 증가 (쿨타임 감소)</button>
+                <button onclick="selectAugment('multishot')">✨ 다중 공격 (연속 발사 횟수 증가)</button>
+                <button id="aug-skill" onclick="selectAugment('skill')">🌀 스킬 해금: 회전베기</button>
+            </div>
+        </div>
+
+        <div id="game-over-modal" class="modal hidden">
+            <h2 style="color: #e74c3c; font-size: 32px;">사망하셨습니다</h2>
+            <p id="final-score" style="font-size: 20px; margin-bottom: 20px;"></p>
+            <button class="restart-btn" onclick="restartGame()">다시 시작하기</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
