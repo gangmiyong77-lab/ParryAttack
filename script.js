@@ -1,4 +1,4 @@
-// ★ 추가: 가스터 블래스터와 레이저 디자인을 동적으로 삽입 (style.css 수정 필요 없음)
+// ★ 추가: 가스터 블래스터, 돌진 경고, 증강 버튼 디자인을 동적으로 삽입
 const extraStyle = document.createElement('style');
 extraStyle.innerHTML = `
     .gaster-blaster {
@@ -16,6 +16,25 @@ extraStyle.innerHTML = `
         box-shadow: 0 0 15px #0ff, 0 0 30px #fff !important;
         border-radius: 10px !important; height: 25px !important; width: 150px !important;
     }
+    
+    /* 돌진 시 부들부들 떠는 애니메이션 */
+    @keyframes shakeHard {
+        0% { transform: translate(-50%, -50%) scale(0.8) rotate(0deg); }
+        25% { transform: translate(-52%, -50%) scale(0.8) rotate(-5deg); }
+        50% { transform: translate(-48%, -50%) scale(0.8) rotate(5deg); }
+        75% { transform: translate(-50%, -52%) scale(0.8) rotate(-5deg); }
+        100% { transform: translate(-50%, -48%) scale(0.8) rotate(5deg); }
+    }
+    .boss-shake { animation: shakeHard 0.1s infinite !important; }
+    
+    /* 레벨업 랜덤 증강 버튼 디자인 */
+    .aug-btn {
+        margin: 10px 0; padding: 15px; background: #2c3e50; color: white;
+        border: 2px solid #34495e; border-radius: 8px; cursor: pointer;
+        width: 100%; text-align: center; display: block; font-size: 16px;
+        transition: all 0.2s;
+    }
+    .aug-btn:hover { background: #34495e; border-color: #f1c40f; transform: scale(1.02); }
 `;
 document.head.appendChild(extraStyle);
 
@@ -49,8 +68,7 @@ function playSound(type) {
     else if (type === 'swing') sound = audioSwing;
 
     if (sound) {
-        sound.volume = 0.1;
-        sound.currentTime = 0;
+        sound.volume = 0.1; sound.currentTime = 0;
         sound.play().catch(e => console.log("Sound play prevented pending user interaction."));
     }
 }
@@ -91,8 +109,9 @@ document.getElementById('btn-skill').addEventListener('touchstart', (e) => { e.p
 let bossLevel = 1;
 let bosses = [];
 let projectiles = [];
-let blasters = []; // ★ 가스터 블래스터 배열 관리
+let blasters = []; 
 
+// ★ 플레이어 초기 스탯에 피흡(lifesteal), 스킬계수(skillDamageMult) 추가
 const initPlayer = () => ({
     x: GAME_WIDTH / 2, y: GAME_HEIGHT - 100, speed: 2.5, radius: 25,
     hp: 100, maxHp: 100, exp: 0, maxExp: 400, level: 1, damage: 10, 
@@ -100,7 +119,8 @@ const initPlayer = () => ({
     attackQueue: 0, burstTimer: 0, 
     isParrying: false, parryTimer: 0, parryCooldown: 0,
     hasSkill: false, skillCooldown: 0, maxSkillCooldown: 600,
-    isGrabbed: false, grabTimer: 0
+    isGrabbed: false, grabTimer: 0,
+    lifesteal: 0, skillDamageMult: 2 
 });
 let player = initPlayer();
 
@@ -135,6 +155,7 @@ function spawnBosses() {
         hpBg.appendChild(hpFill); uiEl.appendChild(nameEl); uiEl.appendChild(hpBg);
         container.appendChild(el); container.appendChild(uiEl);
 
+        // ★ 설정해주신 대로 보스 체력 조정 (기본 50 + 레벨*100) ★
         let maxHp = 50 + (bossLevel * 100); 
         let spacing = GAME_WIDTH / (bossLevel + 1);
         
@@ -153,29 +174,25 @@ function spawnBosses() {
     if(topBossName) topBossName.innerText = `WAVE ${bossLevel} (적 ${bossLevel}마리)`;
 }
 
-// ★ 블래스터 소환 함수 ★
 function createBlaster(x, y, angle, owner) {
     playSound('parry'); 
     const el = document.createElement('div');
     el.className = 'gaster-blaster';
-    el.style.left = x + 'px';
-    el.style.top = y + 'px';
+    el.style.left = x + 'px'; el.style.top = y + 'px';
     el.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
     
-    // 블래스터 눈(하늘색 빛)
     const eye = document.createElement('div');
     eye.style.position = 'absolute'; eye.style.right = '10px'; eye.style.top = '12px';
     eye.style.width = '10px'; eye.style.height = '10px'; eye.style.backgroundColor = '#0ff'; 
     eye.style.borderRadius = '50%'; eye.style.boxShadow = '0 0 10px #0ff';
     el.appendChild(eye);
 
-    // 블래스터 조준선
     const telegraph = document.createElement('div');
     telegraph.className = 'blaster-telegraph';
     el.appendChild(telegraph);
     
     container.appendChild(el);
-    blasters.push({ x, y, angle, timer: 35, el, telegraph, owner }); // 35프레임 후 발사
+    blasters.push({ x, y, angle, timer: 35, el, telegraph, owner }); 
 }
 
 function getClosestBoss() {
@@ -251,12 +268,11 @@ function doSkill() {
         playSound('swing'); player.skillCooldown = player.maxSkillCooldown;
         playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
         for (let i = 0; i < 8; i++) {
-            spawnProjectile(player.x, player.y, (Math.PI / 4) * i, 15, player.damage * 2, false, 120, true);
+            spawnProjectile(player.x, player.y, (Math.PI / 4) * i, 15, player.damage * player.skillDamageMult, false, 120, true);
         }
     }
 }
 
-// ★ isLaser 매개변수 추가: 레이저일 경우 크고 화려한 속성 부여
 function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = false, isGrab = false, owner = null, isLaser = false) {
     const el = document.createElement('div');
     el.className = `slash ${isBoss ? 'boss-slash' : ''} ${isHeavy ? 'heavy-slash' : ''} ${isGrab ? 'grab-slash' : ''} ${isLaser ? 'laser-slash' : ''}`;
@@ -277,20 +293,12 @@ function bossLogic() {
             if (boss.stateTimer > 90) { 
                 const rand = Math.random(); boss.stateTimer = 0;
                 
-                // ★ 보스 레벨별 패턴 등장 확률 업데이트 (4레벨부터 패턴7 가스터 블래스터 등장) ★
                 if (bossLevel < 2) {
                     if (rand < 0.2) boss.state = 'pattern1'; else if (rand < 0.4) boss.state = 'pattern2'; else if (rand < 0.6) boss.state = 'pattern3'; else if (rand < 0.8) boss.state = 'pattern4'; else boss.state = 'pattern5';
                 } else if (bossLevel < 4) {
                     if (rand < 0.15) boss.state = 'pattern1'; else if (rand < 0.3) boss.state = 'pattern2'; else if (rand < 0.45) boss.state = 'pattern3'; else if (rand < 0.6) boss.state = 'pattern4'; else if (rand < 0.75) boss.state = 'pattern5'; else boss.state = 'pattern6'; 
                 } else {
-                    // 레벨 4 이상: 무려 35% 확률로 가스터 블래스터 패턴 사용!
-                    if (rand < 0.1) boss.state = 'pattern1'; 
-                    else if (rand < 0.2) boss.state = 'pattern2'; 
-                    else if (rand < 0.3) boss.state = 'pattern3'; 
-                    else if (rand < 0.4) boss.state = 'pattern4'; 
-                    else if (rand < 0.5) boss.state = 'pattern5'; 
-                    else if (rand < 0.65) boss.state = 'pattern6'; 
-                    else boss.state = 'pattern7'; // 가스터 블래스터 
+                    if (rand < 0.1) boss.state = 'pattern1'; else if (rand < 0.2) boss.state = 'pattern2'; else if (rand < 0.3) boss.state = 'pattern3'; else if (rand < 0.4) boss.state = 'pattern4'; else if (rand < 0.5) boss.state = 'pattern5'; else if (rand < 0.65) boss.state = 'pattern6'; else boss.state = 'pattern7'; 
                 }
             }
         } else {
@@ -332,12 +340,24 @@ function bossLogic() {
             else if (boss.state === 'pattern5') {
                 if (boss.stateTimer === 1) { 
                     boss.el.style.backgroundColor = '#f1c40f'; 
-                    boss.el.style.transform = 'translate(-50%, -50%) scale(0.8)';
-                    boss.el.style.transition = 'transform 0.5s, background-color 0.5s';
-                    boss.el.classList.add('boss-telegraph');
+                    // ★ 확실한 돌진 준비 이펙트: 크기 축소 + 강한 진동(Shake) 추가
+                    boss.el.classList.add('boss-telegraph', 'boss-shake');
+                    
+                    // ★ 머리 위 거대한 빨간색 느낌표 추가
+                    let warning = document.createElement('div');
+                    warning.innerText = '❗';
+                    warning.className = 'dash-warning';
+                    warning.style.position = 'absolute'; warning.style.top = '-40px';
+                    warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)';
+                    warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 10px red';
+                    boss.el.appendChild(warning);
                 }
                 if (boss.stateTimer === 60) {
-                    boss.el.classList.remove('eye-glow', 'boss-telegraph'); boss.el.classList.add('boss-dashing');
+                    boss.el.classList.remove('eye-glow', 'boss-telegraph', 'boss-shake'); 
+                    let warn = boss.el.querySelector('.dash-warning');
+                    if(warn) warn.remove();
+
+                    boss.el.classList.add('boss-dashing');
                     boss.el.style.backgroundColor = '#e67e22'; boss.el.style.transform = 'translate(-50%, -50%) scale(1.1)';
                     boss.el.style.transition = 'none'; 
                     boss.vx = Math.cos(angleToPlayer) * boss.dashSpeed; boss.vy = Math.sin(angleToPlayer) * boss.dashSpeed;
@@ -366,29 +386,22 @@ function bossLogic() {
                 }
                 if (boss.stateTimer > 100) resetBossState(boss);
             }
-            // ★ 신규 패턴: 가스터 블래스터 (엇박, 궤도 회전) ★
             else if (boss.state === 'pattern7') {
                 if (boss.stateTimer === 1) { 
-                    boss.el.style.backgroundColor = '#000'; // 흑화
+                    boss.el.style.backgroundColor = '#000'; 
                     boss.el.style.boxShadow = '0 0 20px #0ff';
                 }
                 
-                // 보스가 플레이어를 향해 천천히 압박 이동 (평타 섞기 위함)
-                boss.x += Math.cos(angleToPlayer) * 1.5;
-                boss.y += Math.sin(angleToPlayer) * 1.5;
+                boss.x += Math.cos(angleToPlayer) * 1.5; boss.y += Math.sin(angleToPlayer) * 1.5;
 
-                // 엇박자 타이밍으로 블래스터 소환 배열
                 const timings = [30, 70, 100, 150, 180, 230, 260];
                 if (timings.includes(boss.stateTimer)) {
-                    // 타이머에 따라 각도를 계속 증가시켜 빙빙 도는 연출
                     let orbitAngle = (boss.stateTimer * 0.1) + Math.random(); 
                     let bx = player.x + Math.cos(orbitAngle) * 250;
                     let by = player.y + Math.sin(orbitAngle) * 250;
                     let angleToBlaster = Math.atan2(player.y - by, player.x - bx);
-
                     createBlaster(bx, by, angleToBlaster, boss);
                 }
-
                 if (boss.stateTimer > 300) { resetBossState(boss); }
             }
         }
@@ -402,11 +415,14 @@ function bossLogic() {
 
 function resetBossState(boss) { 
     boss.state = 'idle'; boss.stateTimer = 0; boss.vy = 0; boss.vx = 2; 
-    boss.el.classList.remove('boss-attack-anim', 'boss-telegraph', 'boss-dashing', 'eye-glow'); 
+    boss.el.classList.remove('boss-attack-anim', 'boss-telegraph', 'boss-dashing', 'eye-glow', 'boss-shake'); 
     boss.el.style.backgroundColor = '#c0392b';
-    boss.el.style.boxShadow = 'none'; // 블래스터 빛 효과 제거
+    boss.el.style.boxShadow = 'none'; 
     boss.el.style.transform = 'translate(-50%, -50%) scale(1)';
     boss.el.style.transition = 'none'; 
+    
+    let warn = boss.el.querySelector('.dash-warning');
+    if(warn) warn.remove();
 }
 
 function getDistance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
@@ -475,21 +491,15 @@ function update() {
 
     bossLogic();
 
-    // ★ 블래스터 업데이트 타이머 처리 ★
     for (let i = blasters.length - 1; i >= 0; i--) {
         let bl = blasters[i];
         bl.timer--;
-        
         if (bl.timer === 0) {
-            playSound('swing'); // 발사음
-            bl.telegraph.remove(); // 조준선 제거
-            // 엄청나게 빠른 레이저 (isLaser = true 적용)
+            playSound('swing'); bl.telegraph.remove();
             spawnProjectile(bl.x, bl.y, bl.angle, 25, 30, true, 100, true, false, bl.owner, true);
-            bl.el.style.opacity = '0'; // 발사 직후 투명화
-            bl.el.style.transform = `translate(-50%, -50%) rotate(${bl.angle}rad) translateX(-20px)`; // 반동 연출
+            bl.el.style.opacity = '0'; bl.el.style.transform = `translate(-50%, -50%) rotate(${bl.angle}rad) translateX(-20px)`; 
         } else if (bl.timer === -15) {
-            bl.el.remove(); // 완전히 지우기
-            blasters.splice(i, 1);
+            bl.el.remove(); blasters.splice(i, 1);
         }
     }
 
@@ -533,8 +543,14 @@ function update() {
             for(let j = bosses.length - 1; j >= 0; j--) {
                 let b = bosses[j];
                 if (getDistance(p.x, p.y, b.x, b.y) < b.radius + p.radius) {
-                    b.hp -= p.damage; gainExp(p.damage); updateUI(); 
-                    bossHitEffect(b, p.x, p.y); 
+                    b.hp -= p.damage; gainExp(p.damage); 
+                    
+                    // ★ 신규 증강: 흡혈(피흡) 적용 ★
+                    if (player.lifesteal > 0 && player.hp < player.maxHp) {
+                        player.hp = Math.min(player.maxHp, player.hp + player.lifesteal);
+                    }
+                    
+                    updateUI(); bossHitEffect(b, p.x, p.y); 
                     p.el.remove(); projectiles.splice(i, 1);
                     checkBossDeath(b);
                     break; 
@@ -556,7 +572,7 @@ function update() {
 window.restartGame = function() {
     player = initPlayer(); bossLevel = 1; 
     projectiles.forEach(p => p.el.remove()); projectiles = [];
-    blasters.forEach(b => b.el.remove()); blasters = []; // 다시 시작 시 블래스터 지우기
+    blasters.forEach(b => b.el.remove()); blasters = []; 
     
     document.querySelectorAll('.unparryable-hit').forEach(el => el.remove());
     document.querySelectorAll('.impact-effect').forEach(el => el.remove());
@@ -587,11 +603,50 @@ function updateUI() {
     if(bossHpTop && totalMaxHp > 0) bossHpTop.style.width = (Math.max(0, totalHp) / totalMaxHp * 100) + '%';
 }
 
+// ★ 로그라이크 랜덤 증강 시스템 (HTML 안 건드리고 JS가 알아서 띄움) ★
+function showLevelUpModal() {
+    isPaused = true; 
+    const modal = document.getElementById('level-up-modal');
+    modal.classList.remove('hidden');
+    
+    // 모달 내용물(버튼들) 초기화 및 제목 재설정
+    modal.innerHTML = '<h2 style="color: gold; text-align: center; margin-bottom: 20px;">🎉 레벨 업! 증강 선택</h2>';
+
+    // 증강 풀(Pool) 설정
+    const augmentPool = [
+        { id: 'damage', name: '⚔️ 예리한 칼날', desc: '평타 데미지 +5' },
+        { id: 'cooldown', name: '⚡ 가벼운 몸놀림', desc: '평타 공격 쿨타임 감소' },
+        { id: 'multishot', name: '🏹 다중 발사', desc: '평타 발사 개수 1개 추가' },
+        { id: 'lifesteal', name: '🩸 흡혈귀', desc: '적 명중 시 체력 회복량 증가' },
+        { id: 'maxhp', name: '💖 강인한 체력', desc: '최대 체력 +30 및 체력 100% 회복' },
+        { id: 'speed', name: '👟 날개 달린 신발', desc: '플레이어 이동 속도 약간 증가' }
+    ];
+
+    if (!player.hasSkill) {
+        augmentPool.push({ id: 'skill', name: '🌀 회전베기 스킬', desc: '[R]키로 주변 적 전체 공격 획득' });
+    } else {
+        augmentPool.push({ id: 'skill_cooldown', name: '⏳ 깨달음', desc: '회전베기 스킬 쿨타임 감소' });
+        augmentPool.push({ id: 'skill_damage', name: '💥 치명적인 일격', desc: '회전베기 스킬 데미지 증가' });
+    }
+
+    // 배열을 무작위로 섞어서 맨 앞 3개만 추출 (3지선다)
+    augmentPool.sort(() => 0.5 - Math.random());
+    const choices = augmentPool.slice(0, 3);
+
+    choices.forEach(aug => {
+        const btn = document.createElement('button');
+        btn.className = 'aug-btn';
+        btn.innerHTML = `<strong>${aug.name}</strong><br><span style="font-size:13px; color:#aaa;">${aug.desc}</span>`;
+        btn.onclick = () => window.selectAugment(aug.id);
+        modal.appendChild(btn);
+    });
+}
+
 function gainExp(amount) {
     player.exp += (amount * 0.5); 
     if (player.exp >= player.maxExp) {
         player.level++; player.exp -= player.maxExp; player.maxExp = Math.floor(player.maxExp * 1.5);
-        updateUI(); isPaused = true; document.getElementById('level-up-modal').classList.remove('hidden');
+        updateUI(); showLevelUpModal(); // 레벨업 시 랜덤 증강 띄우기
     }
     updateUI();
 }
@@ -600,11 +655,18 @@ window.selectAugment = function(type) {
     if (type === 'damage') player.damage += 5;
     else if (type === 'cooldown') player.baseAttackCooldown = Math.max(10, player.baseAttackCooldown - 5);
     else if (type === 'multishot') player.attackCount += 1;
+    else if (type === 'lifesteal') player.lifesteal += 1; 
+    else if (type === 'maxhp') { player.maxHp += 30; player.hp = player.maxHp; }
+    else if (type === 'speed') player.speed += 0.5;
     else if (type === 'skill') {
         player.hasSkill = true; skillStatusEl.classList.remove('hidden');
         document.getElementById('aug-skill').style.display = 'none'; document.getElementById('btn-skill').classList.remove('hidden'); 
     }
-    document.getElementById('level-up-modal').classList.add('hidden'); updateUI(); isPaused = false; 
+    else if (type === 'skill_cooldown') player.maxSkillCooldown = Math.max(180, player.maxSkillCooldown - 100);
+    else if (type === 'skill_damage') player.skillDamageMult += 1;
+
+    document.getElementById('level-up-modal').classList.add('hidden'); 
+    updateUI(); isPaused = false; 
 }
 
 spawnBosses();
