@@ -1,4 +1,4 @@
-// ★ 추가: 가스터 블래스터, 돌진 경고, 증강 버튼 디자인을 동적으로 삽입
+// 가스터 블래스터, 돌진 경고, 증강 버튼 디자인 동적 삽입
 const extraStyle = document.createElement('style');
 extraStyle.innerHTML = `
     .gaster-blaster {
@@ -17,7 +17,6 @@ extraStyle.innerHTML = `
         border-radius: 10px !important; height: 25px !important; width: 150px !important;
     }
     
-    /* 돌진 시 부들부들 떠는 애니메이션 */
     @keyframes shakeHard {
         0% { transform: translate(-50%, -50%) scale(0.8) rotate(0deg); }
         25% { transform: translate(-52%, -50%) scale(0.8) rotate(-5deg); }
@@ -27,7 +26,6 @@ extraStyle.innerHTML = `
     }
     .boss-shake { animation: shakeHard 0.1s infinite !important; }
     
-    /* 레벨업 랜덤 증강 버튼 디자인 */
     .aug-btn {
         margin: 10px 0; padding: 15px; background: #2c3e50; color: white;
         border: 2px solid #34495e; border-radius: 8px; cursor: pointer;
@@ -111,13 +109,13 @@ let bosses = [];
 let projectiles = [];
 let blasters = []; 
 
-// ★ 플레이어 초기 스탯에 피흡(lifesteal), 스킬계수(skillDamageMult) 추가
+// ★ autoParryTimer 추가 (패링 성공 시 0.1초 오토패링)
 const initPlayer = () => ({
     x: GAME_WIDTH / 2, y: GAME_HEIGHT - 100, speed: 2.5, radius: 25,
     hp: 100, maxHp: 100, exp: 0, maxExp: 400, level: 1, damage: 10, 
     attackCount: 1, baseAttackCooldown: 30, attackCooldown: 0,
     attackQueue: 0, burstTimer: 0, 
-    isParrying: false, parryTimer: 0, parryCooldown: 0,
+    isParrying: false, parryTimer: 0, parryCooldown: 0, autoParryTimer: 0,
     hasSkill: false, skillCooldown: 0, maxSkillCooldown: 600,
     isGrabbed: false, grabTimer: 0,
     lifesteal: 0, skillDamageMult: 2 
@@ -155,7 +153,6 @@ function spawnBosses() {
         hpBg.appendChild(hpFill); uiEl.appendChild(nameEl); uiEl.appendChild(hpBg);
         container.appendChild(el); container.appendChild(uiEl);
 
-        // ★ 설정해주신 대로 보스 체력 조정 (기본 50 + 레벨*100) ★
         let maxHp = 50 + (bossLevel * 100); 
         let spacing = GAME_WIDTH / (bossLevel + 1);
         
@@ -340,10 +337,8 @@ function bossLogic() {
             else if (boss.state === 'pattern5') {
                 if (boss.stateTimer === 1) { 
                     boss.el.style.backgroundColor = '#f1c40f'; 
-                    // ★ 확실한 돌진 준비 이펙트: 크기 축소 + 강한 진동(Shake) 추가
                     boss.el.classList.add('boss-telegraph', 'boss-shake');
                     
-                    // ★ 머리 위 거대한 빨간색 느낌표 추가
                     let warning = document.createElement('div');
                     warning.innerText = '❗';
                     warning.className = 'dash-warning';
@@ -365,10 +360,13 @@ function bossLogic() {
                 if (boss.stateTimer > 60 && boss.stateTimer < 90) {
                     boss.x += boss.vx; boss.y += boss.vy;
                     if (getDistance(boss.x, boss.y, player.x, player.y) < player.radius + boss.radius) {
-                        if (player.isParrying) {
+                        // ★ 돌진 공격 패링 판정 (오토패링 타이머 적용)
+                        if (player.isParrying || player.autoParryTimer > 0) {
+                            player.autoParryTimer = 6; // 0.1초 연속 오토패링 갱신
                             playSound('parryed');
-                            player.isParrying = false; playerEl.classList.remove('parrying');
-                            playerEl.classList.add('parry-deflect', 'parry-cd'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
+                            player.isParrying = false; 
+                            playerEl.classList.remove('parrying', 'parry-cd'); // 회색 제거 보장
+                            playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
                             player.parryCooldown = 0; parryStatusEl.innerText = "돌진 저지 성공! (보스 기절)"; parryStatusEl.style.color = "#2ecc71";
                             boss.hp -= 100; gainExp(50); boss.stateTimer = 90;
                             bossHitEffect(boss, boss.x, boss.y); checkBossDeath(boss);
@@ -416,7 +414,7 @@ function bossLogic() {
 function resetBossState(boss) { 
     boss.state = 'idle'; boss.stateTimer = 0; boss.vy = 0; boss.vx = 2; 
     boss.el.classList.remove('boss-attack-anim', 'boss-telegraph', 'boss-dashing', 'eye-glow', 'boss-shake'); 
-    boss.el.style.backgroundColor = '#c0392b';
+    boss.el.style.backgroundColor = ''; // 기존 배경이나 이미지 유지
     boss.el.style.boxShadow = 'none'; 
     boss.el.style.transform = 'translate(-50%, -50%) scale(1)';
     boss.el.style.transition = 'none'; 
@@ -431,6 +429,9 @@ function update() {
     if (isPaused) { requestAnimationFrame(update); return; }
 
     if (isAttacking) doAttack();
+
+    // ★ 오토패링 타이머 차감
+    if (player.autoParryTimer > 0) player.autoParryTimer--;
 
     if (!player.isGrabbed && !player.isParrying) {
         if (keys.w && player.y > player.radius) player.y -= player.speed;
@@ -465,21 +466,29 @@ function update() {
         if (player.grabTimer <= 0) { player.isGrabbed = false; playerEl.classList.remove('player-grabbed'); }
     }
 
+    // ★ 쿨타임 로직 안전 개선 (회색 버그 수정)
     if (player.isParrying) {
         player.parryTimer--;
         if (player.parryTimer <= 0) {
-            player.isParrying = false; playerEl.classList.remove('parrying');
-            playerEl.classList.add('parry-cd'); player.parryCooldown = 300; 
+            player.isParrying = false; 
+            playerEl.classList.remove('parrying');
+            playerEl.classList.add('parry-cd'); 
+            player.parryCooldown = 300; 
         }
-    } else if (player.parryCooldown > 0) {
-        player.parryCooldown--;
-        let secondsLeft = Math.ceil(player.parryCooldown / 60);
-        if (!player.isGrabbed) { 
-            parryStatusEl.innerText = `패링 쿨타임: ${secondsLeft}초`; parryStatusEl.style.color = "#e74c3c"; floatingCdEl.innerText = `${secondsLeft}초`; 
-        }
-        if (player.parryCooldown <= 0 && !player.isGrabbed) { 
-            parryStatusEl.innerText = "패링 준비 완료"; parryStatusEl.style.color = "#3498db"; 
-            playerEl.classList.remove('parry-cd'); floatingCdEl.innerText = ""; 
+    } else {
+        if (player.parryCooldown > 0) {
+            player.parryCooldown--;
+            let secondsLeft = Math.ceil(player.parryCooldown / 60);
+            if (!player.isGrabbed) { 
+                parryStatusEl.innerText = `패링 쿨타임: ${secondsLeft}초`; parryStatusEl.style.color = "#e74c3c"; floatingCdEl.innerText = `${secondsLeft}초`; 
+            }
+            if (player.parryCooldown <= 0) { 
+                if (!player.isGrabbed) {
+                    parryStatusEl.innerText = "패링 준비 완료"; parryStatusEl.style.color = "#3498db"; 
+                    floatingCdEl.innerText = ""; 
+                }
+                playerEl.classList.remove('parry-cd'); // 쿨타임 종료 시 확실히 회색 제거
+            }
         }
     }
 
@@ -515,8 +524,12 @@ function update() {
 
         if (p.isBoss) {
             if (getDistance(p.x, p.y, player.x, player.y) < player.radius + p.radius) {
-                if (player.isParrying) {
-                    playSound('parryed'); player.isParrying = false; playerEl.classList.remove('parrying');
+                // ★ 투사체 패링 판정 (오토패링 적용)
+                if (player.isParrying || player.autoParryTimer > 0) {
+                    player.autoParryTimer = 6; // 연속 오토패링 갱신
+                    playSound('parryed'); 
+                    player.isParrying = false; 
+                    playerEl.classList.remove('parrying', 'parry-cd'); // 회색 제거 보장
                     playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
                     player.parryCooldown = 0; floatingCdEl.innerText = "";
                     parryStatusEl.innerText = p.isGrab ? "잡기 무효화 성공!" : "패링 반사 성공!"; 
@@ -545,7 +558,6 @@ function update() {
                 if (getDistance(p.x, p.y, b.x, b.y) < b.radius + p.radius) {
                     b.hp -= p.damage; gainExp(p.damage); 
                     
-                    // ★ 신규 증강: 흡혈(피흡) 적용 ★
                     if (player.lifesteal > 0 && player.hp < player.maxHp) {
                         player.hp = Math.min(player.maxHp, player.hp + player.lifesteal);
                     }
@@ -569,6 +581,7 @@ function update() {
     requestAnimationFrame(update);
 }
 
+// ★ 재시작 오류 완벽 수정 ★
 window.restartGame = function() {
     player = initPlayer(); bossLevel = 1; 
     projectiles.forEach(p => p.el.remove()); projectiles = [];
@@ -578,8 +591,15 @@ window.restartGame = function() {
     document.querySelectorAll('.impact-effect').forEach(el => el.remove());
 
     document.getElementById('game-over-modal').classList.add('hidden');
-    document.getElementById('aug-skill').style.display = 'block'; 
-    skillStatusEl.classList.add('hidden'); document.getElementById('btn-skill').classList.add('hidden'); 
+    
+    // HTML에 요소가 없어도 에러가 나지 않도록 안전망 추가
+    const augSkillEl = document.getElementById('aug-skill');
+    if (augSkillEl) augSkillEl.style.display = 'block'; 
+    
+    const btnSkillEl = document.getElementById('btn-skill');
+    if (btnSkillEl) btnSkillEl.classList.add('hidden'); 
+    
+    if (skillStatusEl) skillStatusEl.classList.add('hidden'); 
     
     playerEl.classList.remove('player-grabbed', 'parrying', 'parry-deflect', 'parry-cd', 'hit-flash');
     container.classList.remove('screen-shake', 'boss-hit-shake');
@@ -603,16 +623,13 @@ function updateUI() {
     if(bossHpTop && totalMaxHp > 0) bossHpTop.style.width = (Math.max(0, totalHp) / totalMaxHp * 100) + '%';
 }
 
-// ★ 로그라이크 랜덤 증강 시스템 (HTML 안 건드리고 JS가 알아서 띄움) ★
 function showLevelUpModal() {
     isPaused = true; 
     const modal = document.getElementById('level-up-modal');
     modal.classList.remove('hidden');
     
-    // 모달 내용물(버튼들) 초기화 및 제목 재설정
     modal.innerHTML = '<h2 style="color: gold; text-align: center; margin-bottom: 20px;">🎉 레벨 업! 증강 선택</h2>';
 
-    // 증강 풀(Pool) 설정
     const augmentPool = [
         { id: 'damage', name: '⚔️ 예리한 칼날', desc: '평타 데미지 +5' },
         { id: 'cooldown', name: '⚡ 가벼운 몸놀림', desc: '평타 공격 쿨타임 감소' },
@@ -629,7 +646,6 @@ function showLevelUpModal() {
         augmentPool.push({ id: 'skill_damage', name: '💥 치명적인 일격', desc: '회전베기 스킬 데미지 증가' });
     }
 
-    // 배열을 무작위로 섞어서 맨 앞 3개만 추출 (3지선다)
     augmentPool.sort(() => 0.5 - Math.random());
     const choices = augmentPool.slice(0, 3);
 
@@ -646,7 +662,7 @@ function gainExp(amount) {
     player.exp += (amount * 0.5); 
     if (player.exp >= player.maxExp) {
         player.level++; player.exp -= player.maxExp; player.maxExp = Math.floor(player.maxExp * 1.5);
-        updateUI(); showLevelUpModal(); // 레벨업 시 랜덤 증강 띄우기
+        updateUI(); showLevelUpModal(); 
     }
     updateUI();
 }
