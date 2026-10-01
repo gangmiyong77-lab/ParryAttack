@@ -16,14 +16,6 @@ const audioParry = new Audio('./Parry.mp3');
 const audioParryed = new Audio('./Parryed.mp3');
 const audioSwing = new Audio('./Swing.mp3');
 
-// ★ 추가: 전체 오디오 볼륨을 0.5(50%)로 설정
-audioDead.volume = 0.1;
-audioAttack1.volume = 0.1;
-audioAttack2.volume = 0.1;
-audioParry.volume = 0.1;
-audioParryed.volume = 0.1;
-audioSwing.volume = 0.1;
-
 function playSound(type) {
     let sound;
     if (type === 'hit') {
@@ -39,6 +31,9 @@ function playSound(type) {
     }
 
     if (sound) {
+        // ★ 여기서 재생할 때마다 강제로 볼륨을 0.1 (10%)로 낮춥니다.
+        sound.volume = 0.1;
+        
         sound.currentTime = 0;
         sound.play().catch(e => console.log("Sound play prevented pending user interaction."));
     }
