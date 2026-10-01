@@ -85,18 +85,18 @@ const initPlayer = () => ({
 });
 let player = initPlayer();
 
-// ★ 다중 보스 생성 함수 ★
+// ★ 다중 보스 생성 함수 (눈, 무기 디자인 복원) ★
 function spawnBosses() {
     bosses.forEach(b => { b.el.remove(); b.uiEl.remove(); });
     bosses = [];
     
     for(let i = 0; i < bossLevel; i++) {
-        const el = document.createElement('div');
-        el.className = 'boss';
-        // 기존 CSS 호환을 위한 인라인 스타일 강제 적용
-        el.style.width = '100px'; el.style.height = '100px';
-        el.style.backgroundColor = '#c0392b'; el.style.borderRadius = '50%';
-        el.style.position = 'absolute'; el.style.transform = 'translate(-50%, -50%)';
+        // 단순 원형 대신, 기존 HTML의 원본 보스 디자인(눈, 무기 등)을 통째로 복사합니다.
+        const el = originalBossEl.cloneNode(true);
+        el.id = ''; // HTML ID가 중복되지 않도록 제거
+        el.style.display = 'block'; // 숨겨뒀던 디자인을 화면에 표시
+        el.style.position = 'absolute'; 
+        el.style.transform = 'translate(-50%, -50%)';
         el.style.zIndex = '10';
 
         const uiEl = document.createElement('div');
@@ -124,10 +124,10 @@ function spawnBosses() {
         
         bosses.push({
             x: spacing * (i + 1),
-            y: 100 + (Math.random() * 80),
+            y: 100 + (Math.random() * 80), // 보스들이 살짝 겹치지 않게 높낮이 랜덤
             radius: 50,
             hp: maxHp, maxHp: maxHp,
-            state: 'idle', stateTimer: Math.floor(Math.random() * 40), // 패턴 타이밍 엇갈리게
+            state: 'idle', stateTimer: Math.floor(Math.random() * 40), // 패턴 엇갈리게
             vx: 2 * (i % 2 === 0 ? 1 : -1), vy: 0, dashSpeed: 20 + bossLevel,
             el: el, uiEl: uiEl, hpFill: hpFill
         });
