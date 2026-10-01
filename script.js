@@ -16,6 +16,14 @@ const audioParry = new Audio('./Parry.mp3');
 const audioParryed = new Audio('./Parryed.mp3');
 const audioSwing = new Audio('./Swing.mp3');
 
+// ★ 추가: 전체 오디오 볼륨을 0.5(50%)로 설정
+audioDead.volume = 0.5;
+audioAttack1.volume = 0.5;
+audioAttack2.volume = 0.5;
+audioParry.volume = 0.5;
+audioParryed.volume = 0.5;
+audioSwing.volume = 0.5;
+
 function playSound(type) {
     let sound;
     if (type === 'hit') {
@@ -42,7 +50,7 @@ window.addEventListener('resize', () => { GAME_WIDTH = container.clientWidth; GA
 
 const keys = { w: false, a: false, s: false, d: false };
 
-// ★ 수정: 스페이스바는 패링, R키는 스킬
+// 스페이스바는 패링, R키는 스킬
 window.addEventListener('keydown', e => { 
     if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true; 
     
@@ -58,7 +66,7 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false; });
 window.addEventListener('contextmenu', e => e.preventDefault());
 
-// ★ 수정: 마우스 꾹 누르기(연속 공격) 상태 변수 추가
+// 마우스 꾹 누르기(연속 공격) 상태 변수
 let isAttacking = false;
 
 container.addEventListener('mousedown', e => {
@@ -292,7 +300,7 @@ function getDistance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
 function update() {
     if (isPaused) { requestAnimationFrame(update); return; }
 
-    // ★ 추가: 좌클릭 꾹 누르고 있으면 지속적으로 공격
+    // 좌클릭 꾹 누르고 있으면 지속적으로 공격
     if (isAttacking) {
         doAttack();
     }
