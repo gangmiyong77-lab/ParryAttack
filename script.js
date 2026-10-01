@@ -1,10 +1,30 @@
+// ★ 추가: 가스터 블래스터와 레이저 디자인을 동적으로 삽입 (style.css 수정 필요 없음)
+const extraStyle = document.createElement('style');
+extraStyle.innerHTML = `
+    .gaster-blaster {
+        position: absolute; width: 45px; height: 35px;
+        background: #111; border: 2px solid #fff; border-radius: 10px 20px 20px 10px;
+        z-index: 15; transition: opacity 0.3s, transform 0.1s;
+    }
+    .blaster-telegraph {
+        position: absolute; top: 50%; left: 45px;
+        width: 1500px; height: 2px; background: rgba(0, 255, 255, 0.4);
+        transform: translateY(-50%); pointer-events: none;
+    }
+    .laser-slash {
+        background: #0ff !important; border: none !important;
+        box-shadow: 0 0 15px #0ff, 0 0 30px #fff !important;
+        border-radius: 10px !important; height: 25px !important; width: 150px !important;
+    }
+`;
+document.head.appendChild(extraStyle);
+
 const container = document.getElementById('game-container');
 const playerEl = document.getElementById('player');
 const floatingCdEl = document.getElementById('floating-cd'); 
 const parryStatusEl = document.getElementById('parry-status');
 const skillStatusEl = document.getElementById('skill-status');
 
-// 기존의 고정된 보스 UI는 JS에서 동적 생성하므로 화면에서 숨김 처리
 const originalBossEl = document.getElementById('boss');
 const originalBossUiEl = document.getElementById('boss-ui');
 if(originalBossEl) originalBossEl.style.display = 'none';
@@ -12,7 +32,7 @@ if(originalBossUiEl) originalBossUiEl.style.display = 'none';
 
 let isPaused = false;
 
-// 오디오 파일 설정 (볼륨 0.1)
+// 오디오 설정
 const audioDead = new Audio('./Dead.mp3');
 const audioAttack1 = new Audio('./Attack1.mp3');
 const audioAttack2 = new Audio('./Attack2.mp3');
@@ -55,9 +75,7 @@ container.addEventListener('mousedown', e => {
     if (e.button === 0) isAttacking = true; 
     else if (e.button === 2) activateParry();
 });
-window.addEventListener('mouseup', e => {
-    if (e.button === 0) isAttacking = false; 
-});
+window.addEventListener('mouseup', e => { if (e.button === 0) isAttacking = false; });
 
 function bindTouch(id, key) {
     const btn = document.getElementById(id);
@@ -73,6 +91,7 @@ document.getElementById('btn-skill').addEventListener('touchstart', (e) => { e.p
 let bossLevel = 1;
 let bosses = [];
 let projectiles = [];
+let blasters = []; // ★ 가스터 블래스터 배열 관리
 
 const initPlayer = () => ({
     x: GAME_WIDTH / 2, y: GAME_HEIGHT - 100, speed: 2.5, radius: 25,
@@ -85,16 +104,12 @@ const initPlayer = () => ({
 });
 let player = initPlayer();
 
-// ★ 다중 보스 생성 함수 (디자인 완벽 복원 및 체력 하향) ★
 function spawnBosses() {
     bosses.forEach(b => { b.el.remove(); b.uiEl.remove(); });
     bosses = [];
     
     for(let i = 0; i < bossLevel; i++) {
-        // 기존 HTML의 보스 디자인을 그대로 복사합니다.
         const el = originalBossEl.cloneNode(true);
-        // el.id = ''; <-- 이전에 디자인을 망가뜨렸던 원인(ID 삭제)을 없앴습니다!
-        
         el.style.display = 'block'; 
         el.style.position = 'absolute'; 
         el.style.transform = 'translate(-50%, -50%)';
@@ -120,8 +135,7 @@ function spawnBosses() {
         hpBg.appendChild(hpFill); uiEl.appendChild(nameEl); uiEl.appendChild(hpBg);
         container.appendChild(el); container.appendChild(uiEl);
 
-        // ★ 보스 체력 대폭 하향 (기존 기본 1000 -> 500 / 레벨당 증가 500 -> 200) ★
-        let maxHp = 500 + (bossLevel * 200); 
+        let maxHp = 50 + (bossLevel * 100); 
         let spacing = GAME_WIDTH / (bossLevel + 1);
         
         bosses.push({
@@ -139,7 +153,31 @@ function spawnBosses() {
     if(topBossName) topBossName.innerText = `WAVE ${bossLevel} (적 ${bossLevel}마리)`;
 }
 
-// 가장 가까운 보스 찾기 (평타 유도용)
+// ★ 블래스터 소환 함수 ★
+function createBlaster(x, y, angle, owner) {
+    playSound('parry'); 
+    const el = document.createElement('div');
+    el.className = 'gaster-blaster';
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+    
+    // 블래스터 눈(하늘색 빛)
+    const eye = document.createElement('div');
+    eye.style.position = 'absolute'; eye.style.right = '10px'; eye.style.top = '12px';
+    eye.style.width = '10px'; eye.style.height = '10px'; eye.style.backgroundColor = '#0ff'; 
+    eye.style.borderRadius = '50%'; eye.style.boxShadow = '0 0 10px #0ff';
+    el.appendChild(eye);
+
+    // 블래스터 조준선
+    const telegraph = document.createElement('div');
+    telegraph.className = 'blaster-telegraph';
+    el.appendChild(telegraph);
+    
+    container.appendChild(el);
+    blasters.push({ x, y, angle, timer: 35, el, telegraph, owner }); // 35프레임 후 발사
+}
+
 function getClosestBoss() {
     if(bosses.length === 0) return null;
     let closest = bosses[0];
@@ -161,7 +199,6 @@ function bossHitEffect(targetBoss, x, y) {
     playSound('hit');
     targetBoss.el.classList.add('boss-hit-flash');
     setTimeout(() => targetBoss.el.classList.remove('boss-hit-flash'), 200);
-
     container.classList.add('boss-hit-shake');
     setTimeout(() => container.classList.remove('boss-hit-shake'), 150);
 
@@ -175,9 +212,9 @@ function checkBossDeath(b) {
     if (b.hp <= 0) {
         playSound('dead'); 
         b.el.remove(); b.uiEl.remove();
-        bosses = bosses.filter(boss => boss !== b); // 죽은 보스 배열에서 제거
+        bosses = bosses.filter(boss => boss !== b); 
         
-        if (bosses.length === 0) { // 모든 보스 처치 시
+        if (bosses.length === 0) { 
             bossLevel++; 
             player.hp = Math.min(player.maxHp, player.hp + 50);
             setTimeout(() => alert(`웨이브 클리어! 다음 단계(Lv.${bossLevel})로 진입합니다!\n(적 ${bossLevel}마리 등장, 체력 소폭 회복)`), 100);
@@ -193,8 +230,7 @@ function doAttack() {
     setTimeout(() => playerEl.classList.remove('attack-anim'), 200);
     
     let target = getClosestBoss();
-    let tx = target ? target.x : player.x;
-    let ty = target ? target.y : player.y - 10;
+    let tx = target ? target.x : player.x; let ty = target ? target.y : player.y - 10;
     
     const baseAngle = Math.atan2(ty - player.y, tx - player.x);
     spawnProjectile(player.x, player.y, baseAngle, 12, player.damage, false, 70);
@@ -220,10 +256,11 @@ function doSkill() {
     }
 }
 
-function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = false, isGrab = false, owner = null) {
+// ★ isLaser 매개변수 추가: 레이저일 경우 크고 화려한 속성 부여
+function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = false, isGrab = false, owner = null, isLaser = false) {
     const el = document.createElement('div');
-    el.className = `slash ${isBoss ? 'boss-slash' : ''} ${isHeavy ? 'heavy-slash' : ''} ${isGrab ? 'grab-slash' : ''}`;
-    if(isHeavy && !isBoss) el.style.borderRightColor = "#00ffff"; 
+    el.className = `slash ${isBoss ? 'boss-slash' : ''} ${isHeavy ? 'heavy-slash' : ''} ${isGrab ? 'grab-slash' : ''} ${isLaser ? 'laser-slash' : ''}`;
+    if(isHeavy && !isBoss && !isLaser) el.style.borderRightColor = "#00ffff"; 
     
     el.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
     container.appendChild(el);
@@ -239,16 +276,27 @@ function bossLogic() {
             boss.stateTimer++;
             if (boss.stateTimer > 90) { 
                 const rand = Math.random(); boss.stateTimer = 0;
-                if (bossLevel === 1) {
+                
+                // ★ 보스 레벨별 패턴 등장 확률 업데이트 (4레벨부터 패턴7 가스터 블래스터 등장) ★
+                if (bossLevel < 2) {
                     if (rand < 0.2) boss.state = 'pattern1'; else if (rand < 0.4) boss.state = 'pattern2'; else if (rand < 0.6) boss.state = 'pattern3'; else if (rand < 0.8) boss.state = 'pattern4'; else boss.state = 'pattern5';
-                } else {
+                } else if (bossLevel < 4) {
                     if (rand < 0.15) boss.state = 'pattern1'; else if (rand < 0.3) boss.state = 'pattern2'; else if (rand < 0.45) boss.state = 'pattern3'; else if (rand < 0.6) boss.state = 'pattern4'; else if (rand < 0.75) boss.state = 'pattern5'; else boss.state = 'pattern6'; 
+                } else {
+                    // 레벨 4 이상: 무려 35% 확률로 가스터 블래스터 패턴 사용!
+                    if (rand < 0.1) boss.state = 'pattern1'; 
+                    else if (rand < 0.2) boss.state = 'pattern2'; 
+                    else if (rand < 0.3) boss.state = 'pattern3'; 
+                    else if (rand < 0.4) boss.state = 'pattern4'; 
+                    else if (rand < 0.5) boss.state = 'pattern5'; 
+                    else if (rand < 0.65) boss.state = 'pattern6'; 
+                    else boss.state = 'pattern7'; // 가스터 블래스터 
                 }
             }
         } else {
             boss.stateTimer++;
             const angleToPlayer = Math.atan2(player.y - boss.y, player.x - boss.x);
-            if (boss.stateTimer === 1) boss.el.classList.add('eye-glow');
+            if (boss.stateTimer === 1 && boss.state !== 'pattern7') boss.el.classList.add('eye-glow');
 
             if (boss.state === 'pattern1') {
                 if(boss.stateTimer === 10) { 
@@ -261,7 +309,7 @@ function bossLogic() {
                 if(boss.stateTimer === 1) boss.el.classList.add('boss-telegraph');
                 if(boss.stateTimer === 100) { 
                     playSound('swing'); boss.el.classList.remove('eye-glow', 'boss-telegraph'); boss.el.classList.add('boss-attack-anim'); 
-                    spawnProjectile(boss.x, boss.y, angleToPlayer, 10, 40, true, 180, true, false, boss); 
+                    spawnProjectile(boss.x, boss.y, angleToPlayer, 10, 20, true, 180, true, false, boss); 
                 }
                 if(boss.stateTimer > 130) resetBossState(boss);
             }
@@ -282,9 +330,16 @@ function bossLogic() {
                 if(boss.stateTimer > 70) resetBossState(boss);
             }
             else if (boss.state === 'pattern5') {
-                if (boss.stateTimer === 1) boss.el.classList.add('boss-telegraph');
+                if (boss.stateTimer === 1) { 
+                    boss.el.style.backgroundColor = '#f1c40f'; 
+                    boss.el.style.transform = 'translate(-50%, -50%) scale(0.8)';
+                    boss.el.style.transition = 'transform 0.5s, background-color 0.5s';
+                    boss.el.classList.add('boss-telegraph');
+                }
                 if (boss.stateTimer === 60) {
                     boss.el.classList.remove('eye-glow', 'boss-telegraph'); boss.el.classList.add('boss-dashing');
+                    boss.el.style.backgroundColor = '#e67e22'; boss.el.style.transform = 'translate(-50%, -50%) scale(1.1)';
+                    boss.el.style.transition = 'none'; 
                     boss.vx = Math.cos(angleToPlayer) * boss.dashSpeed; boss.vy = Math.sin(angleToPlayer) * boss.dashSpeed;
                 }
                 if (boss.stateTimer > 60 && boss.stateTimer < 90) {
@@ -297,9 +352,7 @@ function bossLogic() {
                             player.parryCooldown = 0; parryStatusEl.innerText = "돌진 저지 성공! (보스 기절)"; parryStatusEl.style.color = "#2ecc71";
                             boss.hp -= 100; gainExp(50); boss.stateTimer = 90;
                             bossHitEffect(boss, boss.x, boss.y); checkBossDeath(boss);
-                        } else {
-                            takeDamage(30); boss.stateTimer = 90;
-                        }
+                        } else { takeDamage(30); boss.stateTimer = 90; }
                     }
                 }
                 if (boss.stateTimer >= 90) { boss.el.classList.remove('boss-dashing'); resetBossState(boss); }
@@ -312,6 +365,31 @@ function bossLogic() {
                     spawnProjectile(boss.x, boss.y, angleToPlayer, 15, 0, true, 80, false, true, boss);
                 }
                 if (boss.stateTimer > 100) resetBossState(boss);
+            }
+            // ★ 신규 패턴: 가스터 블래스터 (엇박, 궤도 회전) ★
+            else if (boss.state === 'pattern7') {
+                if (boss.stateTimer === 1) { 
+                    boss.el.style.backgroundColor = '#000'; // 흑화
+                    boss.el.style.boxShadow = '0 0 20px #0ff';
+                }
+                
+                // 보스가 플레이어를 향해 천천히 압박 이동 (평타 섞기 위함)
+                boss.x += Math.cos(angleToPlayer) * 1.5;
+                boss.y += Math.sin(angleToPlayer) * 1.5;
+
+                // 엇박자 타이밍으로 블래스터 소환 배열
+                const timings = [30, 70, 100, 150, 180, 230, 260];
+                if (timings.includes(boss.stateTimer)) {
+                    // 타이머에 따라 각도를 계속 증가시켜 빙빙 도는 연출
+                    let orbitAngle = (boss.stateTimer * 0.1) + Math.random(); 
+                    let bx = player.x + Math.cos(orbitAngle) * 250;
+                    let by = player.y + Math.sin(orbitAngle) * 250;
+                    let angleToBlaster = Math.atan2(player.y - by, player.x - bx);
+
+                    createBlaster(bx, by, angleToBlaster, boss);
+                }
+
+                if (boss.stateTimer > 300) { resetBossState(boss); }
             }
         }
         boss.x = Math.max(boss.radius, Math.min(GAME_WIDTH - boss.radius, boss.x));
@@ -326,6 +404,9 @@ function resetBossState(boss) {
     boss.state = 'idle'; boss.stateTimer = 0; boss.vy = 0; boss.vx = 2; 
     boss.el.classList.remove('boss-attack-anim', 'boss-telegraph', 'boss-dashing', 'eye-glow'); 
     boss.el.style.backgroundColor = '#c0392b';
+    boss.el.style.boxShadow = 'none'; // 블래스터 빛 효과 제거
+    boss.el.style.transform = 'translate(-50%, -50%) scale(1)';
+    boss.el.style.transition = 'none'; 
 }
 
 function getDistance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
@@ -360,7 +441,7 @@ function update() {
     if (player.isGrabbed) {
         player.grabTimer--;
         if (player.grabTimer === 30) {
-            takeDamage(80); 
+            takeDamage(25); 
             let explosion = document.createElement('div'); explosion.className = 'unparryable-hit';
             explosion.style.left = player.x + 'px'; explosion.style.top = player.y + 'px';
             container.appendChild(explosion); setTimeout(() => explosion.remove(), 500);
@@ -394,6 +475,24 @@ function update() {
 
     bossLogic();
 
+    // ★ 블래스터 업데이트 타이머 처리 ★
+    for (let i = blasters.length - 1; i >= 0; i--) {
+        let bl = blasters[i];
+        bl.timer--;
+        
+        if (bl.timer === 0) {
+            playSound('swing'); // 발사음
+            bl.telegraph.remove(); // 조준선 제거
+            // 엄청나게 빠른 레이저 (isLaser = true 적용)
+            spawnProjectile(bl.x, bl.y, bl.angle, 25, 30, true, 100, true, false, bl.owner, true);
+            bl.el.style.opacity = '0'; // 발사 직후 투명화
+            bl.el.style.transform = `translate(-50%, -50%) rotate(${bl.angle}rad) translateX(-20px)`; // 반동 연출
+        } else if (bl.timer === -15) {
+            bl.el.remove(); // 완전히 지우기
+            blasters.splice(i, 1);
+        }
+    }
+
     for (let i = projectiles.length - 1; i >= 0; i--) {
         let p = projectiles[i];
         p.x += Math.cos(p.angle) * p.speed; p.y += Math.sin(p.angle) * p.speed;
@@ -417,7 +516,7 @@ function update() {
                         if(p.owner) { p.owner.hp -= 20; bossHitEffect(p.owner, p.owner.x, p.owner.y); checkBossDeath(p.owner); }
                         p.el.remove(); projectiles.splice(i, 1);
                     } else {
-                        p.isBoss = false; p.el.classList.remove('boss-slash', 'heavy-slash');
+                        p.isBoss = false; p.el.classList.remove('boss-slash', 'heavy-slash', 'laser-slash');
                         let target = getClosestBoss();
                         p.angle = target ? Math.atan2(target.y - p.y, target.x - p.x) : p.angle + Math.PI;
                         p.speed *= 1.5; p.damage *= 2; 
@@ -431,7 +530,6 @@ function update() {
                 }
             }
         } else { 
-            // 플레이어 투사체가 여러 보스 중 하나에 맞았는지 확인
             for(let j = bosses.length - 1; j >= 0; j--) {
                 let b = bosses[j];
                 if (getDistance(p.x, p.y, b.x, b.y) < b.radius + p.radius) {
@@ -458,6 +556,8 @@ function update() {
 window.restartGame = function() {
     player = initPlayer(); bossLevel = 1; 
     projectiles.forEach(p => p.el.remove()); projectiles = [];
+    blasters.forEach(b => b.el.remove()); blasters = []; // 다시 시작 시 블래스터 지우기
+    
     document.querySelectorAll('.unparryable-hit').forEach(el => el.remove());
     document.querySelectorAll('.impact-effect').forEach(el => el.remove());
 
