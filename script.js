@@ -109,10 +109,10 @@ let bosses = [];
 let projectiles = [];
 let blasters = []; 
 
-// ★ autoParryTimer 추가 (패링 성공 시 0.1초 오토패링)
+// ★ 필요 경험치 완화 (maxExp 400 -> 200 시작)
 const initPlayer = () => ({
     x: GAME_WIDTH / 2, y: GAME_HEIGHT - 100, speed: 2.5, radius: 25,
-    hp: 100, maxHp: 100, exp: 0, maxExp: 400, level: 1, damage: 10, 
+    hp: 100, maxHp: 100, exp: 0, maxExp: 200, level: 1, damage: 10, 
     attackCount: 1, baseAttackCooldown: 30, attackCooldown: 0,
     attackQueue: 0, burstTimer: 0, 
     isParrying: false, parryTimer: 0, parryCooldown: 0, autoParryTimer: 0,
@@ -360,12 +360,11 @@ function bossLogic() {
                 if (boss.stateTimer > 60 && boss.stateTimer < 90) {
                     boss.x += boss.vx; boss.y += boss.vy;
                     if (getDistance(boss.x, boss.y, player.x, player.y) < player.radius + boss.radius) {
-                        // ★ 돌진 공격 패링 판정 (오토패링 타이머 적용)
                         if (player.isParrying || player.autoParryTimer > 0) {
-                            player.autoParryTimer = 6; // 0.1초 연속 오토패링 갱신
+                            player.autoParryTimer = 6; 
                             playSound('parryed');
                             player.isParrying = false; 
-                            playerEl.classList.remove('parrying', 'parry-cd'); // 회색 제거 보장
+                            playerEl.classList.remove('parrying', 'parry-cd'); 
                             playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
                             player.parryCooldown = 0; parryStatusEl.innerText = "돌진 저지 성공! (보스 기절)"; parryStatusEl.style.color = "#2ecc71";
                             boss.hp -= 100; gainExp(50); boss.stateTimer = 90;
@@ -414,7 +413,7 @@ function bossLogic() {
 function resetBossState(boss) { 
     boss.state = 'idle'; boss.stateTimer = 0; boss.vy = 0; boss.vx = 2; 
     boss.el.classList.remove('boss-attack-anim', 'boss-telegraph', 'boss-dashing', 'eye-glow', 'boss-shake'); 
-    boss.el.style.backgroundColor = ''; // 기존 배경이나 이미지 유지
+    boss.el.style.backgroundColor = ''; 
     boss.el.style.boxShadow = 'none'; 
     boss.el.style.transform = 'translate(-50%, -50%) scale(1)';
     boss.el.style.transition = 'none'; 
@@ -430,7 +429,6 @@ function update() {
 
     if (isAttacking) doAttack();
 
-    // ★ 오토패링 타이머 차감
     if (player.autoParryTimer > 0) player.autoParryTimer--;
 
     if (!player.isGrabbed && !player.isParrying) {
@@ -466,7 +464,6 @@ function update() {
         if (player.grabTimer <= 0) { player.isGrabbed = false; playerEl.classList.remove('player-grabbed'); }
     }
 
-    // ★ 쿨타임 로직 안전 개선 (회색 버그 수정)
     if (player.isParrying) {
         player.parryTimer--;
         if (player.parryTimer <= 0) {
@@ -487,7 +484,7 @@ function update() {
                     parryStatusEl.innerText = "패링 준비 완료"; parryStatusEl.style.color = "#3498db"; 
                     floatingCdEl.innerText = ""; 
                 }
-                playerEl.classList.remove('parry-cd'); // 쿨타임 종료 시 확실히 회색 제거
+                playerEl.classList.remove('parry-cd'); 
             }
         }
     }
@@ -505,7 +502,8 @@ function update() {
         bl.timer--;
         if (bl.timer === 0) {
             playSound('swing'); bl.telegraph.remove();
-            spawnProjectile(bl.x, bl.y, bl.angle, 25, 30, true, 100, true, false, bl.owner, true);
+            // ★ 가스터 블래스터 데미지 하향: 30 -> 10 ★
+            spawnProjectile(bl.x, bl.y, bl.angle, 25, 10, true, 100, true, false, bl.owner, true);
             bl.el.style.opacity = '0'; bl.el.style.transform = `translate(-50%, -50%) rotate(${bl.angle}rad) translateX(-20px)`; 
         } else if (bl.timer === -15) {
             bl.el.remove(); blasters.splice(i, 1);
@@ -524,12 +522,11 @@ function update() {
 
         if (p.isBoss) {
             if (getDistance(p.x, p.y, player.x, player.y) < player.radius + p.radius) {
-                // ★ 투사체 패링 판정 (오토패링 적용)
                 if (player.isParrying || player.autoParryTimer > 0) {
-                    player.autoParryTimer = 6; // 연속 오토패링 갱신
+                    player.autoParryTimer = 6; 
                     playSound('parryed'); 
                     player.isParrying = false; 
-                    playerEl.classList.remove('parrying', 'parry-cd'); // 회색 제거 보장
+                    playerEl.classList.remove('parrying', 'parry-cd'); 
                     playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
                     player.parryCooldown = 0; floatingCdEl.innerText = "";
                     parryStatusEl.innerText = p.isGrab ? "잡기 무효화 성공!" : "패링 반사 성공!"; 
@@ -573,7 +570,7 @@ function update() {
 
     if (player.hp <= 0) {
         playSound('dead'); 
-        document.getElementById('final-score').innerText = `최종 도달: Boss Wave ${bossLevel}\n플레이어 Lv. ${player.level}`;
+        document.getElementById('final-score').innerText = `현재 도달: Boss Wave ${bossLevel}\n플레이어 Lv. ${player.level}`;
         document.getElementById('game-over-modal').classList.remove('hidden');
         isPaused = true; return; 
     }
@@ -581,9 +578,17 @@ function update() {
     requestAnimationFrame(update);
 }
 
-// ★ 재시작 오류 완벽 수정 ★
+// ★ 재시작 시, 모든 것을 날리지 않고 현재 라운드(wave)에서 재도전 하도록 변경 ★
 window.restartGame = function() {
-    player = initPlayer(); bossLevel = 1; 
+    // 레벨, 경험치, 증강 스탯, 보스 레벨(웨이브)은 그대로 유지하고 플레이어의 체력과 위치, 쿨타임만 초기화합니다.
+    player.hp = player.maxHp;
+    player.x = GAME_WIDTH / 2;
+    player.y = GAME_HEIGHT - 100;
+    player.isGrabbed = false; player.grabTimer = 0;
+    player.isParrying = false; player.parryCooldown = 0; player.autoParryTimer = 0;
+    player.attackCooldown = 0; player.burstTimer = 0; player.attackQueue = 0;
+    player.skillCooldown = 0;
+    
     projectiles.forEach(p => p.el.remove()); projectiles = [];
     blasters.forEach(b => b.el.remove()); blasters = []; 
     
@@ -592,18 +597,23 @@ window.restartGame = function() {
 
     document.getElementById('game-over-modal').classList.add('hidden');
     
-    // HTML에 요소가 없어도 에러가 나지 않도록 안전망 추가
+    // UI 복구 (현재 획득한 스킬 유지)
     const augSkillEl = document.getElementById('aug-skill');
-    if (augSkillEl) augSkillEl.style.display = 'block'; 
-    
     const btnSkillEl = document.getElementById('btn-skill');
-    if (btnSkillEl) btnSkillEl.classList.add('hidden'); 
-    
-    if (skillStatusEl) skillStatusEl.classList.add('hidden'); 
+    if (player.hasSkill) {
+        if (augSkillEl) augSkillEl.style.display = 'none'; 
+        if (btnSkillEl) btnSkillEl.classList.remove('hidden'); 
+        if (skillStatusEl) skillStatusEl.classList.remove('hidden'); 
+    } else {
+        if (augSkillEl) augSkillEl.style.display = 'block'; 
+        if (btnSkillEl) btnSkillEl.classList.add('hidden'); 
+        if (skillStatusEl) skillStatusEl.classList.add('hidden'); 
+    }
     
     playerEl.classList.remove('player-grabbed', 'parrying', 'parry-deflect', 'parry-cd', 'hit-flash');
     container.classList.remove('screen-shake', 'boss-hit-shake');
     
+    // 현재 보스 웨이브를 다시 소환
     spawnBosses(); updateUI();
     isPaused = false; requestAnimationFrame(update); 
 }
@@ -661,7 +671,8 @@ function showLevelUpModal() {
 function gainExp(amount) {
     player.exp += (amount * 0.5); 
     if (player.exp >= player.maxExp) {
-        player.level++; player.exp -= player.maxExp; player.maxExp = Math.floor(player.maxExp * 1.5);
+        // ★ 필요 경험치 증가 배율 완화 (1.5 -> 1.3배)
+        player.level++; player.exp -= player.maxExp; player.maxExp = Math.floor(player.maxExp * 1.3);
         updateUI(); showLevelUpModal(); 
     }
     updateUI();
