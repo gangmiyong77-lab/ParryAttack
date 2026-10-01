@@ -85,16 +85,17 @@ const initPlayer = () => ({
 });
 let player = initPlayer();
 
-// ★ 다중 보스 생성 함수 (눈, 무기 디자인 복원) ★
+// ★ 다중 보스 생성 함수 (디자인 완벽 복원 및 체력 하향) ★
 function spawnBosses() {
     bosses.forEach(b => { b.el.remove(); b.uiEl.remove(); });
     bosses = [];
     
     for(let i = 0; i < bossLevel; i++) {
-        // 단순 원형 대신, 기존 HTML의 원본 보스 디자인(눈, 무기 등)을 통째로 복사합니다.
+        // 기존 HTML의 보스 디자인을 그대로 복사합니다.
         const el = originalBossEl.cloneNode(true);
-        el.id = ''; // HTML ID가 중복되지 않도록 제거
-        el.style.display = 'block'; // 숨겨뒀던 디자인을 화면에 표시
+        // el.id = ''; <-- 이전에 디자인을 망가뜨렸던 원인(ID 삭제)을 없앴습니다!
+        
+        el.style.display = 'block'; 
         el.style.position = 'absolute'; 
         el.style.transform = 'translate(-50%, -50%)';
         el.style.zIndex = '10';
@@ -119,15 +120,16 @@ function spawnBosses() {
         hpBg.appendChild(hpFill); uiEl.appendChild(nameEl); uiEl.appendChild(hpBg);
         container.appendChild(el); container.appendChild(uiEl);
 
-        let maxHp = 1000 + (bossLevel * 500);
+        // ★ 보스 체력 대폭 하향 (기존 기본 1000 -> 500 / 레벨당 증가 500 -> 200) ★
+        let maxHp = 500 + (bossLevel * 200); 
         let spacing = GAME_WIDTH / (bossLevel + 1);
         
         bosses.push({
             x: spacing * (i + 1),
-            y: 100 + (Math.random() * 80), // 보스들이 살짝 겹치지 않게 높낮이 랜덤
+            y: 100 + (Math.random() * 80),
             radius: 50,
             hp: maxHp, maxHp: maxHp,
-            state: 'idle', stateTimer: Math.floor(Math.random() * 40), // 패턴 엇갈리게
+            state: 'idle', stateTimer: Math.floor(Math.random() * 40),
             vx: 2 * (i % 2 === 0 ? 1 : -1), vy: 0, dashSpeed: 20 + bossLevel,
             el: el, uiEl: uiEl, hpFill: hpFill
         });
