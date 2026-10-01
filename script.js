@@ -1,4 +1,3 @@
-// 가스터 블래스터, 돌진 경고, 증강 버튼 디자인 동적 삽입
 const extraStyle = document.createElement('style');
 extraStyle.innerHTML = `
     .gaster-blaster {
@@ -8,13 +7,18 @@ extraStyle.innerHTML = `
     }
     .blaster-telegraph {
         position: absolute; top: 50%; left: 45px;
-        width: 1500px; height: 2px; background: rgba(0, 255, 255, 0.4);
+        width: 1500px; height: 2px; background: rgba(255, 0, 0, 0.4); /* 패링 불가 경고색 */
         transform: translateY(-50%); pointer-events: none;
     }
     .laser-slash {
         background: #0ff !important; border: none !important;
         box-shadow: 0 0 15px #0ff, 0 0 30px #fff !important;
         border-radius: 10px !important; height: 25px !important; width: 150px !important;
+    }
+    /* ★ 패링 불가 빨간색 속성 */
+    .unparryable-attack {
+        border-right-color: #ff0000 !important; background: #ff0000 !important;
+        box-shadow: 0 0 15px #ff0000, 0 0 30px #ffaaaa !important;
     }
     
     @keyframes shakeHard {
@@ -41,6 +45,11 @@ const playerEl = document.getElementById('player');
 const floatingCdEl = document.getElementById('floating-cd'); 
 const parryStatusEl = document.getElementById('parry-status');
 const skillStatusEl = document.getElementById('skill-status');
+
+// ★ 대시 상태를 표시할 UI 동적 생성
+const dashStatusEl = document.createElement('div');
+dashStatusEl.style.marginTop = '5px'; dashStatusEl.style.fontWeight = 'bold'; dashStatusEl.style.fontSize = '14px';
+parryStatusEl.parentNode.insertBefore(dashStatusEl, parryStatusEl.nextSibling);
 
 const originalBossEl = document.getElementById('boss');
 const originalBossUiEl = document.getElementById('boss-ui');
@@ -81,6 +90,7 @@ window.addEventListener('keydown', e => {
     if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true; 
     if (e.code === 'Space') { e.preventDefault(); activateParry(); }
     if (e.key.toLowerCase() === 'r') { doSkill(); }
+    if (e.key === 'Shift') { e.preventDefault(); doDash(); } // ★ Shift키 대시 추가
 });
 window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false; });
 window.addEventListener('contextmenu', e => e.preventDefault());
@@ -93,34 +103,23 @@ container.addEventListener('mousedown', e => {
 });
 window.addEventListener('mouseup', e => { if (e.button === 0) isAttacking = false; });
 
-function bindTouch(id, key) {
-    const btn = document.getElementById(id);
-    btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[key] = true; });
-    btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[key] = false; });
-}
-bindTouch('btn-up', 'w'); bindTouch('btn-down', 's');
-bindTouch('btn-left', 'a'); bindTouch('btn-right', 'd');
-document.getElementById('btn-attack').addEventListener('touchstart', (e) => { e.preventDefault(); doAttack(); });
-document.getElementById('btn-parry').addEventListener('touchstart', (e) => { e.preventDefault(); activateParry(); });
-document.getElementById('btn-skill').addEventListener('touchstart', (e) => { e.preventDefault(); doSkill(); });
-
-let bossLevel = 1;
-let bosses = [];
-let projectiles = [];
-let blasters = []; 
-
-// ★ 필요 경험치 완화 (maxExp 400 -> 200 시작)
 const initPlayer = () => ({
     x: GAME_WIDTH / 2, y: GAME_HEIGHT - 100, speed: 2.5, radius: 25,
     hp: 100, maxHp: 100, exp: 0, maxExp: 200, level: 1, damage: 10, 
     attackCount: 1, baseAttackCooldown: 30, attackCooldown: 0,
     attackQueue: 0, burstTimer: 0, 
     isParrying: false, parryTimer: 0, parryCooldown: 0, autoParryTimer: 0,
+    isDashing: false, dashTimer: 0, dashCooldown: 0, dashDir: {x: 1, y: 0}, // ★ 대시 스탯 추가
     hasSkill: false, skillCooldown: 0, maxSkillCooldown: 600,
     isGrabbed: false, grabTimer: 0,
     lifesteal: 0, skillDamageMult: 2 
 });
 let player = initPlayer();
+
+let bossLevel = 1;
+let bosses = [];
+let projectiles = [];
+let blasters = []; 
 
 function spawnBosses() {
     bosses.forEach(b => { b.el.remove(); b.uiEl.remove(); });
@@ -128,10 +127,8 @@ function spawnBosses() {
     
     for(let i = 0; i < bossLevel; i++) {
         const el = originalBossEl.cloneNode(true);
-        el.style.display = 'block'; 
-        el.style.position = 'absolute'; 
-        el.style.transform = 'translate(-50%, -50%)';
-        el.style.zIndex = '10';
+        el.style.display = 'block'; el.style.position = 'absolute'; 
+        el.style.transform = 'translate(-50%, -50%)'; el.style.zIndex = '10';
 
         const uiEl = document.createElement('div');
         uiEl.style.position = 'absolute'; uiEl.style.width = '100px';
@@ -157,16 +154,12 @@ function spawnBosses() {
         let spacing = GAME_WIDTH / (bossLevel + 1);
         
         bosses.push({
-            x: spacing * (i + 1),
-            y: 100 + (Math.random() * 80),
-            radius: 50,
-            hp: maxHp, maxHp: maxHp,
-            state: 'idle', stateTimer: Math.floor(Math.random() * 40),
+            x: spacing * (i + 1), y: 100 + (Math.random() * 80), radius: 50,
+            hp: maxHp, maxHp: maxHp, state: 'idle', stateTimer: Math.floor(Math.random() * 40),
             vx: 2 * (i % 2 === 0 ? 1 : -1), vy: 0, dashSpeed: 20 + bossLevel,
             el: el, uiEl: uiEl, hpFill: hpFill
         });
     }
-    
     const topBossName = document.getElementById('boss-name');
     if(topBossName) topBossName.innerText = `WAVE ${bossLevel} (적 ${bossLevel}마리)`;
 }
@@ -180,8 +173,8 @@ function createBlaster(x, y, angle, owner) {
     
     const eye = document.createElement('div');
     eye.style.position = 'absolute'; eye.style.right = '10px'; eye.style.top = '12px';
-    eye.style.width = '10px'; eye.style.height = '10px'; eye.style.backgroundColor = '#0ff'; 
-    eye.style.borderRadius = '50%'; eye.style.boxShadow = '0 0 10px #0ff';
+    eye.style.width = '10px'; eye.style.height = '10px'; eye.style.backgroundColor = '#f00'; // 패링불가 경고색
+    eye.style.borderRadius = '50%'; eye.style.boxShadow = '0 0 10px #f00';
     el.appendChild(eye);
 
     const telegraph = document.createElement('div');
@@ -224,13 +217,11 @@ function bossHitEffect(targetBoss, x, y) {
 
 function checkBossDeath(b) {
     if (b.hp <= 0) {
-        playSound('dead'); 
-        b.el.remove(); b.uiEl.remove();
+        playSound('dead'); b.el.remove(); b.uiEl.remove();
         bosses = bosses.filter(boss => boss !== b); 
         
         if (bosses.length === 0) { 
-            bossLevel++; 
-            player.hp = Math.min(player.maxHp, player.hp + 50);
+            bossLevel++; player.hp = Math.min(player.maxHp, player.hp + 50);
             setTimeout(() => alert(`웨이브 클리어! 다음 단계(Lv.${bossLevel})로 진입합니다!\n(적 ${bossLevel}마리 등장, 체력 소폭 회복)`), 100);
             spawnBosses(); updateUI();
         }
@@ -238,14 +229,12 @@ function checkBossDeath(b) {
 }
 
 function doAttack() {
-    if(isPaused || player.isGrabbed || player.attackCooldown > 0) return;
-    playSound('swing');
-    playerEl.classList.add('attack-anim');
+    if(isPaused || player.isGrabbed || player.attackCooldown > 0 || player.isDashing) return;
+    playSound('swing'); playerEl.classList.add('attack-anim');
     setTimeout(() => playerEl.classList.remove('attack-anim'), 200);
     
     let target = getClosestBoss();
     let tx = target ? target.x : player.x; let ty = target ? target.y : player.y - 10;
-    
     const baseAngle = Math.atan2(ty - player.y, tx - player.x);
     spawnProjectile(player.x, player.y, baseAngle, 12, player.damage, false, 70);
     
@@ -254,14 +243,14 @@ function doAttack() {
 }
 
 function activateParry() {
-    if(isPaused || player.isGrabbed || player.parryCooldown > 0 || player.isParrying) return;
+    if(isPaused || player.isGrabbed || player.parryCooldown > 0 || player.isParrying || player.isDashing) return;
     playSound('parry'); player.isParrying = true; player.parryTimer = 60; 
     playerEl.classList.add('parrying'); playerEl.classList.remove('parry-cd');
     parryStatusEl.innerText = "패링 중!! (이동 불가)"; parryStatusEl.style.color = "#00ffff";
 }
 
 function doSkill() {
-    if (player.hasSkill && player.skillCooldown <= 0 && !isPaused && !player.isGrabbed) {
+    if (player.hasSkill && player.skillCooldown <= 0 && !isPaused && !player.isGrabbed && !player.isDashing) {
         playSound('swing'); player.skillCooldown = player.maxSkillCooldown;
         playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
         for (let i = 0; i < 8; i++) {
@@ -270,14 +259,34 @@ function doSkill() {
     }
 }
 
-function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = false, isGrab = false, owner = null, isLaser = false) {
+// ★ 대시 실행 함수
+function doDash() {
+    if (isPaused || player.isGrabbed || player.dashCooldown > 0 || player.isDashing) return;
+    playSound('swing');
+    player.isDashing = true; player.dashTimer = 12; // 0.2초 완전 무적
+    player.dashCooldown = 90; // 1.5초 쿨타임
+    
+    let dx = 0, dy = 0;
+    if (keys.w) dy -= 1; if (keys.s) dy += 1;
+    if (keys.a) dx -= 1; if (keys.d) dx += 1;
+    if (dx === 0 && dy === 0) dx = 1; // 키 안 누르면 우측 대시
+    
+    let len = Math.hypot(dx, dy);
+    player.dashDir = { x: dx/len, y: dy/len };
+    
+    playerEl.style.opacity = '0.4'; // 무적 시각효과
+    setTimeout(() => playerEl.style.opacity = '1', 200);
+}
+
+// ★ isUnparryable(패링 불가) 인자 추가
+function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = false, isGrab = false, owner = null, isLaser = false, isUnparryable = false) {
     const el = document.createElement('div');
-    el.className = `slash ${isBoss ? 'boss-slash' : ''} ${isHeavy ? 'heavy-slash' : ''} ${isGrab ? 'grab-slash' : ''} ${isLaser ? 'laser-slash' : ''}`;
+    el.className = `slash ${isBoss ? 'boss-slash' : ''} ${isHeavy ? 'heavy-slash' : ''} ${isGrab ? 'grab-slash' : ''} ${isLaser ? 'laser-slash' : ''} ${isUnparryable ? 'unparryable-attack' : ''}`;
     if(isHeavy && !isBoss && !isLaser) el.style.borderRightColor = "#00ffff"; 
     
     el.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
     container.appendChild(el);
-    projectiles.push({ x, y, angle, speed, damage, isBoss, radius: size/2, el, isGrab, owner });
+    projectiles.push({ x, y, angle, speed, damage, isBoss, radius: size/2, el, isGrab, owner, isUnparryable });
 }
 
 function bossLogic() {
@@ -314,7 +323,8 @@ function bossLogic() {
                 if(boss.stateTimer === 1) boss.el.classList.add('boss-telegraph');
                 if(boss.stateTimer === 100) { 
                     playSound('swing'); boss.el.classList.remove('eye-glow', 'boss-telegraph'); boss.el.classList.add('boss-attack-anim'); 
-                    spawnProjectile(boss.x, boss.y, angleToPlayer, 10, 20, true, 180, true, false, boss); 
+                    // ★ 패턴2 (강공격) 패링 불가로 변경 (대시 유도)
+                    spawnProjectile(boss.x, boss.y, angleToPlayer, 10, 20, true, 180, true, false, boss, false, true); 
                 }
                 if(boss.stateTimer > 130) resetBossState(boss);
             }
@@ -339,19 +349,14 @@ function bossLogic() {
                     boss.el.style.backgroundColor = '#f1c40f'; 
                     boss.el.classList.add('boss-telegraph', 'boss-shake');
                     
-                    let warning = document.createElement('div');
-                    warning.innerText = '❗';
-                    warning.className = 'dash-warning';
-                    warning.style.position = 'absolute'; warning.style.top = '-40px';
-                    warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)';
-                    warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 10px red';
+                    let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'dash-warning';
+                    warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; 
+                    warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 10px red';
                     boss.el.appendChild(warning);
                 }
                 if (boss.stateTimer === 60) {
                     boss.el.classList.remove('eye-glow', 'boss-telegraph', 'boss-shake'); 
-                    let warn = boss.el.querySelector('.dash-warning');
-                    if(warn) warn.remove();
-
+                    let warn = boss.el.querySelector('.dash-warning'); if(warn) warn.remove();
                     boss.el.classList.add('boss-dashing');
                     boss.el.style.backgroundColor = '#e67e22'; boss.el.style.transform = 'translate(-50%, -50%) scale(1.1)';
                     boss.el.style.transition = 'none'; 
@@ -360,13 +365,15 @@ function bossLogic() {
                 if (boss.stateTimer > 60 && boss.stateTimer < 90) {
                     boss.x += boss.vx; boss.y += boss.vy;
                     if (getDistance(boss.x, boss.y, player.x, player.y) < player.radius + boss.radius) {
-                        if (player.isParrying || player.autoParryTimer > 0) {
+                        if (player.isDashing) {
+                            // 대시 중엔 보스 몸통박치기 통과 (무적)
+                        } else if (player.isParrying || player.autoParryTimer > 0) {
                             player.autoParryTimer = 6; 
-                            playSound('parryed');
-                            player.isParrying = false; 
+                            playSound('parryed'); player.isParrying = false; 
                             playerEl.classList.remove('parrying', 'parry-cd'); 
                             playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
-                            player.parryCooldown = 0; parryStatusEl.innerText = "돌진 저지 성공! (보스 기절)"; parryStatusEl.style.color = "#2ecc71";
+                            player.parryCooldown = 15; // 패링 딜레이 (무지성 연타 방지)
+                            parryStatusEl.innerText = "돌진 저지 성공! (보스 기절)"; parryStatusEl.style.color = "#2ecc71";
                             boss.hp -= 100; gainExp(50); boss.stateTimer = 90;
                             bossHitEffect(boss, boss.x, boss.y); checkBossDeath(boss);
                         } else { takeDamage(30); boss.stateTimer = 90; }
@@ -385,12 +392,9 @@ function bossLogic() {
             }
             else if (boss.state === 'pattern7') {
                 if (boss.stateTimer === 1) { 
-                    boss.el.style.backgroundColor = '#000'; 
-                    boss.el.style.boxShadow = '0 0 20px #0ff';
+                    boss.el.style.backgroundColor = '#000'; boss.el.style.boxShadow = '0 0 20px #f00'; // 빨간 경고
                 }
-                
                 boss.x += Math.cos(angleToPlayer) * 1.5; boss.y += Math.sin(angleToPlayer) * 1.5;
-
                 const timings = [30, 70, 100, 150, 180, 230, 260];
                 if (timings.includes(boss.stateTimer)) {
                     let orbitAngle = (boss.stateTimer * 0.1) + Math.random(); 
@@ -413,13 +417,9 @@ function bossLogic() {
 function resetBossState(boss) { 
     boss.state = 'idle'; boss.stateTimer = 0; boss.vy = 0; boss.vx = 2; 
     boss.el.classList.remove('boss-attack-anim', 'boss-telegraph', 'boss-dashing', 'eye-glow', 'boss-shake'); 
-    boss.el.style.backgroundColor = ''; 
-    boss.el.style.boxShadow = 'none'; 
-    boss.el.style.transform = 'translate(-50%, -50%) scale(1)';
-    boss.el.style.transition = 'none'; 
-    
-    let warn = boss.el.querySelector('.dash-warning');
-    if(warn) warn.remove();
+    boss.el.style.backgroundColor = ''; boss.el.style.boxShadow = 'none'; 
+    boss.el.style.transform = 'translate(-50%, -50%) scale(1)'; boss.el.style.transition = 'none'; 
+    let warn = boss.el.querySelector('.dash-warning'); if(warn) warn.remove();
 }
 
 function getDistance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
@@ -431,7 +431,18 @@ function update() {
 
     if (player.autoParryTimer > 0) player.autoParryTimer--;
 
-    if (!player.isGrabbed && !player.isParrying) {
+    // ★ 대시 쿨타임 및 이동 업데이트
+    if (player.dashCooldown > 0) player.dashCooldown--;
+    if (player.dashCooldown <= 0 && !player.isGrabbed) { dashStatusEl.innerText = "[Shift] 대시 준비 완료"; dashStatusEl.style.color = "#2ecc71"; }
+    else { dashStatusEl.innerText = `대시 쿨타임: ${(player.dashCooldown/60).toFixed(1)}초`; dashStatusEl.style.color = "#7f8c8d"; }
+
+    if (player.isDashing) {
+        player.x += player.dashDir.x * 15; player.y += player.dashDir.y * 15;
+        player.x = Math.max(player.radius, Math.min(GAME_WIDTH - player.radius, player.x));
+        player.y = Math.max(player.radius, Math.min(GAME_HEIGHT - player.radius, player.y));
+        player.dashTimer--;
+        if (player.dashTimer <= 0) player.isDashing = false;
+    } else if (!player.isGrabbed && !player.isParrying) {
         if (keys.w && player.y > player.radius) player.y -= player.speed;
         if (keys.s && player.y < GAME_HEIGHT - player.radius) player.y += player.speed;
         if (keys.a && player.x > player.radius) player.x -= player.speed;
@@ -467,10 +478,8 @@ function update() {
     if (player.isParrying) {
         player.parryTimer--;
         if (player.parryTimer <= 0) {
-            player.isParrying = false; 
-            playerEl.classList.remove('parrying');
-            playerEl.classList.add('parry-cd'); 
-            player.parryCooldown = 300; 
+            player.isParrying = false; playerEl.classList.remove('parrying');
+            playerEl.classList.add('parry-cd'); player.parryCooldown = 300; 
         }
     } else {
         if (player.parryCooldown > 0) {
@@ -480,10 +489,7 @@ function update() {
                 parryStatusEl.innerText = `패링 쿨타임: ${secondsLeft}초`; parryStatusEl.style.color = "#e74c3c"; floatingCdEl.innerText = `${secondsLeft}초`; 
             }
             if (player.parryCooldown <= 0) { 
-                if (!player.isGrabbed) {
-                    parryStatusEl.innerText = "패링 준비 완료"; parryStatusEl.style.color = "#3498db"; 
-                    floatingCdEl.innerText = ""; 
-                }
+                if (!player.isGrabbed) { parryStatusEl.innerText = "패링 준비 완료"; parryStatusEl.style.color = "#3498db"; floatingCdEl.innerText = ""; }
                 playerEl.classList.remove('parry-cd'); 
             }
         }
@@ -498,16 +504,13 @@ function update() {
     bossLogic();
 
     for (let i = blasters.length - 1; i >= 0; i--) {
-        let bl = blasters[i];
-        bl.timer--;
+        let bl = blasters[i]; bl.timer--;
         if (bl.timer === 0) {
             playSound('swing'); bl.telegraph.remove();
-            // ★ 가스터 블래스터 데미지 하향: 30 -> 10 ★
-            spawnProjectile(bl.x, bl.y, bl.angle, 25, 10, true, 100, true, false, bl.owner, true);
+            // ★ 블래스터 레이저: 데미지 10, 패링 불가(isUnparryable = true)로 발사 ★
+            spawnProjectile(bl.x, bl.y, bl.angle, 25, 10, true, 100, true, false, bl.owner, true, true);
             bl.el.style.opacity = '0'; bl.el.style.transform = `translate(-50%, -50%) rotate(${bl.angle}rad) translateX(-20px)`; 
-        } else if (bl.timer === -15) {
-            bl.el.remove(); blasters.splice(i, 1);
-        }
+        } else if (bl.timer === -15) { bl.el.remove(); blasters.splice(i, 1); }
     }
 
     for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -522,23 +525,26 @@ function update() {
 
         if (p.isBoss) {
             if (getDistance(p.x, p.y, player.x, player.y) < player.radius + p.radius) {
-                if (player.isParrying || player.autoParryTimer > 0) {
+                if (player.isDashing) {
+                    // ★ 대시 중에는 모든 공격 통과 (회피 성공)
+                } else if ((player.isParrying || player.autoParryTimer > 0) && !p.isUnparryable) {
+                    // ★ 패링 불가 패턴이 아닐 때만 패링 성공 판정
                     player.autoParryTimer = 6; 
-                    playSound('parryed'); 
-                    player.isParrying = false; 
+                    playSound('parryed'); player.isParrying = false; 
                     playerEl.classList.remove('parrying', 'parry-cd'); 
                     playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
-                    player.parryCooldown = 0; floatingCdEl.innerText = "";
-                    parryStatusEl.innerText = p.isGrab ? "잡기 무효화 성공!" : "패링 반사 성공!"; 
+                    
+                    // ★ 무지성 연타 너프: 완전 0초가 아니라 0.25초(15프레임) 딜레이 부여
+                    player.parryCooldown = 15; 
+                    floatingCdEl.innerText = ""; parryStatusEl.innerText = p.isGrab ? "잡기 무효화 성공!" : "패링 반사 성공!"; 
                     parryStatusEl.style.color = "#2ecc71";
 
                     if (p.isGrab) {
                         if(p.owner) { p.owner.hp -= 20; bossHitEffect(p.owner, p.owner.x, p.owner.y); checkBossDeath(p.owner); }
                         p.el.remove(); projectiles.splice(i, 1);
                     } else {
-                        p.isBoss = false; p.el.classList.remove('boss-slash', 'heavy-slash', 'laser-slash');
-                        let target = getClosestBoss();
-                        p.angle = target ? Math.atan2(target.y - p.y, target.x - p.x) : p.angle + Math.PI;
+                        p.isBoss = false; p.el.classList.remove('boss-slash', 'heavy-slash', 'laser-slash', 'unparryable-attack');
+                        let target = getClosestBoss(); p.angle = target ? Math.atan2(target.y - p.y, target.x - p.x) : p.angle + Math.PI;
                         p.speed *= 1.5; p.damage *= 2; 
                     }
                 } else {
@@ -554,15 +560,11 @@ function update() {
                 let b = bosses[j];
                 if (getDistance(p.x, p.y, b.x, b.y) < b.radius + p.radius) {
                     b.hp -= p.damage; gainExp(p.damage); 
-                    
                     if (player.lifesteal > 0 && player.hp < player.maxHp) {
                         player.hp = Math.min(player.maxHp, player.hp + player.lifesteal);
                     }
-                    
                     updateUI(); bossHitEffect(b, p.x, p.y); 
-                    p.el.remove(); projectiles.splice(i, 1);
-                    checkBossDeath(b);
-                    break; 
+                    p.el.remove(); projectiles.splice(i, 1); checkBossDeath(b); break; 
                 }
             }
         }
@@ -574,32 +576,24 @@ function update() {
         document.getElementById('game-over-modal').classList.remove('hidden');
         isPaused = true; return; 
     }
-
     requestAnimationFrame(update);
 }
 
-// ★ 재시작 시, 모든 것을 날리지 않고 현재 라운드(wave)에서 재도전 하도록 변경 ★
 window.restartGame = function() {
-    // 레벨, 경험치, 증강 스탯, 보스 레벨(웨이브)은 그대로 유지하고 플레이어의 체력과 위치, 쿨타임만 초기화합니다.
-    player.hp = player.maxHp;
-    player.x = GAME_WIDTH / 2;
-    player.y = GAME_HEIGHT - 100;
-    player.isGrabbed = false; player.grabTimer = 0;
-    player.isParrying = false; player.parryCooldown = 0; player.autoParryTimer = 0;
-    player.attackCooldown = 0; player.burstTimer = 0; player.attackQueue = 0;
-    player.skillCooldown = 0;
+    player.hp = player.maxHp; player.x = GAME_WIDTH / 2; player.y = GAME_HEIGHT - 100;
+    player.isGrabbed = false; player.grabTimer = 0; player.isParrying = false; 
+    player.parryCooldown = 0; player.autoParryTimer = 0; player.attackCooldown = 0; 
+    player.burstTimer = 0; player.attackQueue = 0; player.skillCooldown = 0;
+    player.isDashing = false; player.dashCooldown = 0;
     
     projectiles.forEach(p => p.el.remove()); projectiles = [];
     blasters.forEach(b => b.el.remove()); blasters = []; 
     
     document.querySelectorAll('.unparryable-hit').forEach(el => el.remove());
     document.querySelectorAll('.impact-effect').forEach(el => el.remove());
-
     document.getElementById('game-over-modal').classList.add('hidden');
     
-    // UI 복구 (현재 획득한 스킬 유지)
-    const augSkillEl = document.getElementById('aug-skill');
-    const btnSkillEl = document.getElementById('btn-skill');
+    const augSkillEl = document.getElementById('aug-skill'); const btnSkillEl = document.getElementById('btn-skill');
     if (player.hasSkill) {
         if (augSkillEl) augSkillEl.style.display = 'none'; 
         if (btnSkillEl) btnSkillEl.classList.remove('hidden'); 
@@ -612,10 +606,7 @@ window.restartGame = function() {
     
     playerEl.classList.remove('player-grabbed', 'parrying', 'parry-deflect', 'parry-cd', 'hit-flash');
     container.classList.remove('screen-shake', 'boss-hit-shake');
-    
-    // 현재 보스 웨이브를 다시 소환
-    spawnBosses(); updateUI();
-    isPaused = false; requestAnimationFrame(update); 
+    spawnBosses(); updateUI(); isPaused = false; requestAnimationFrame(update); 
 }
 
 function updateUI() {
@@ -634,10 +625,8 @@ function updateUI() {
 }
 
 function showLevelUpModal() {
-    isPaused = true; 
-    const modal = document.getElementById('level-up-modal');
+    isPaused = true; const modal = document.getElementById('level-up-modal');
     modal.classList.remove('hidden');
-    
     modal.innerHTML = '<h2 style="color: gold; text-align: center; margin-bottom: 20px;">🎉 레벨 업! 증강 선택</h2>';
 
     const augmentPool = [
@@ -649,29 +638,23 @@ function showLevelUpModal() {
         { id: 'speed', name: '👟 날개 달린 신발', desc: '플레이어 이동 속도 약간 증가' }
     ];
 
-    if (!player.hasSkill) {
-        augmentPool.push({ id: 'skill', name: '🌀 회전베기 스킬', desc: '[R]키로 주변 적 전체 공격 획득' });
-    } else {
+    if (!player.hasSkill) { augmentPool.push({ id: 'skill', name: '🌀 회전베기 스킬', desc: '[R]키로 주변 적 전체 공격 획득' }); } 
+    else {
         augmentPool.push({ id: 'skill_cooldown', name: '⏳ 깨달음', desc: '회전베기 스킬 쿨타임 감소' });
         augmentPool.push({ id: 'skill_damage', name: '💥 치명적인 일격', desc: '회전베기 스킬 데미지 증가' });
     }
 
     augmentPool.sort(() => 0.5 - Math.random());
-    const choices = augmentPool.slice(0, 3);
-
-    choices.forEach(aug => {
-        const btn = document.createElement('button');
-        btn.className = 'aug-btn';
+    augmentPool.slice(0, 3).forEach(aug => {
+        const btn = document.createElement('button'); btn.className = 'aug-btn';
         btn.innerHTML = `<strong>${aug.name}</strong><br><span style="font-size:13px; color:#aaa;">${aug.desc}</span>`;
-        btn.onclick = () => window.selectAugment(aug.id);
-        modal.appendChild(btn);
+        btn.onclick = () => window.selectAugment(aug.id); modal.appendChild(btn);
     });
 }
 
 function gainExp(amount) {
     player.exp += (amount * 0.5); 
     if (player.exp >= player.maxExp) {
-        // ★ 필요 경험치 증가 배율 완화 (1.5 -> 1.3배)
         player.level++; player.exp -= player.maxExp; player.maxExp = Math.floor(player.maxExp * 1.3);
         updateUI(); showLevelUpModal(); 
     }
@@ -692,10 +675,7 @@ window.selectAugment = function(type) {
     else if (type === 'skill_cooldown') player.maxSkillCooldown = Math.max(180, player.maxSkillCooldown - 100);
     else if (type === 'skill_damage') player.skillDamageMult += 1;
 
-    document.getElementById('level-up-modal').classList.add('hidden'); 
-    updateUI(); isPaused = false; 
+    document.getElementById('level-up-modal').classList.add('hidden'); updateUI(); isPaused = false; 
 }
 
-spawnBosses();
-updateUI();
-requestAnimationFrame(update);
+spawnBosses(); updateUI(); requestAnimationFrame(update);
