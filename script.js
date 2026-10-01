@@ -17,12 +17,12 @@ const audioParryed = new Audio('./Parryed.mp3');
 const audioSwing = new Audio('./Swing.mp3');
 
 // ★ 추가: 전체 오디오 볼륨을 0.5(50%)로 설정
-audioDead.volume = 0.5;
-audioAttack1.volume = 0.5;
-audioAttack2.volume = 0.5;
-audioParry.volume = 0.5;
-audioParryed.volume = 0.5;
-audioSwing.volume = 0.5;
+audioDead.volume = 0.1;
+audioAttack1.volume = 0.1;
+audioAttack2.volume = 0.1;
+audioParry.volume = 0.1;
+audioParryed.volume = 0.1;
+audioSwing.volume = 0.1;
 
 function playSound(type) {
     let sound;
