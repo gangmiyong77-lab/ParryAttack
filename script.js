@@ -8,10 +8,7 @@ const skillStatusEl = document.getElementById('skill-status');
 const floatingCdEl = document.getElementById('floating-cd'); 
 let isPaused = false;
 
-// ==========================================
-// ★ 수정: 명확한 상대 경로(./) 사용 ★
-// ==========================================
-// './' 는 'index.html이 있는 현재 폴더'를 의미합니다.
+// 오디오 파일 설정
 const audioDead = new Audio('./Dead.mp3');
 const audioAttack1 = new Audio('./Attack1.mp3');
 const audioAttack2 = new Audio('./Attack2.mp3');
@@ -22,7 +19,6 @@ const audioSwing = new Audio('./Swing.mp3');
 function playSound(type) {
     let sound;
     if (type === 'hit') {
-        // Attack1, Attack2 중 랜덤 재생
         sound = Math.random() < 0.5 ? audioAttack1 : audioAttack2;
     } else if (type === 'dead') {
         sound = audioDead;
@@ -35,12 +31,10 @@ function playSound(type) {
     }
 
     if (sound) {
-        sound.currentTime = 0; // 연속 재생을 위해 재생 위치 초기화
-        // 브라우저 정책상 첫 클릭 전에는 에러가 날 수 있으므로 예외 처리
+        sound.currentTime = 0;
         sound.play().catch(e => console.log("Sound play prevented pending user interaction."));
     }
 }
-// ==========================================
 
 let GAME_WIDTH = container.clientWidth;
 let GAME_HEIGHT = container.clientHeight;
@@ -48,17 +42,39 @@ window.addEventListener('resize', () => { GAME_WIDTH = container.clientWidth; GA
 
 const keys = { w: false, a: false, s: false, d: false };
 
+// ★ 수정: 스페이스바는 패링, R키는 스킬
 window.addEventListener('keydown', e => { 
     if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true; 
-    if (e.code === 'Space') { e.preventDefault(); doSkill(); }
+    
+    if (e.code === 'Space') { 
+        e.preventDefault(); 
+        activateParry(); // 스페이스바 -> 패링
+    }
+    
+    if (e.key.toLowerCase() === 'r') {
+        doSkill(); // R 키 -> 스킬
+    }
 });
 window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false; });
 window.addEventListener('contextmenu', e => e.preventDefault());
 
+// ★ 수정: 마우스 꾹 누르기(연속 공격) 상태 변수 추가
+let isAttacking = false;
+
 container.addEventListener('mousedown', e => {
     if(e.target.closest('#mobile-controls') || e.target.closest('.modal')) return; 
-    if (e.button === 0) doAttack();
-    else if (e.button === 2) activateParry();
+    
+    if (e.button === 0) {
+        isAttacking = true; // 좌클릭 누르고 있으면 공격 상태 켜기
+    } else if (e.button === 2) {
+        activateParry();
+    }
+});
+
+window.addEventListener('mouseup', e => {
+    if (e.button === 0) {
+        isAttacking = false; // 좌클릭 떼면 공격 상태 끄기
+    }
 });
 
 function bindTouch(id, key) {
@@ -94,7 +110,7 @@ let projectiles = [];
 function takeDamage(amount) {
     player.hp -= amount;
     updateUI();
-    playSound('hit'); // 플레이어 피격 사운드
+    playSound('hit');
     playerEl.classList.add('hit-flash');
     container.classList.add('screen-shake');
     setTimeout(() => {
@@ -104,7 +120,7 @@ function takeDamage(amount) {
 }
 
 function bossHitEffect(x, y) {
-    playSound('hit'); // 보스 피격 사운드
+    playSound('hit');
     bossEl.classList.add('boss-hit-flash');
     setTimeout(() => bossEl.classList.remove('boss-hit-flash'), 200);
 
@@ -126,7 +142,7 @@ function bossHitEffect(x, y) {
 function doAttack() {
     if(isPaused || player.isGrabbed || player.attackCooldown > 0) return;
     
-    playSound('swing'); // 플레이어 공격 사운드
+    playSound('swing');
     playerEl.classList.add('attack-anim');
     setTimeout(() => playerEl.classList.remove('attack-anim'), 200);
     
@@ -140,7 +156,7 @@ function doAttack() {
 
 function activateParry() {
     if(isPaused || player.isGrabbed || player.parryCooldown > 0 || player.isParrying) return;
-    playSound('parry'); // 패링 시전 사운드
+    playSound('parry');
     player.isParrying = true;
     player.parryTimer = 60; 
     playerEl.classList.add('parrying');
@@ -151,7 +167,7 @@ function activateParry() {
 
 function doSkill() {
     if (player.hasSkill && player.skillCooldown <= 0 && !isPaused && !player.isGrabbed) {
-        playSound('swing'); // 스킬 시전 사운드
+        playSound('swing');
         player.skillCooldown = player.maxSkillCooldown;
         playerEl.classList.add('parry-deflect');
         setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
@@ -234,7 +250,7 @@ function bossLogic() {
                 boss.x += boss.vx; boss.y += boss.vy;
                 if (getDistance(boss.x, boss.y, player.x, player.y) < player.radius + boss.radius) {
                     if (player.isParrying) {
-                        playSound('parryed'); // 돌진 패링 성공!
+                        playSound('parryed');
                         player.isParrying = false; playerEl.classList.remove('parrying');
                         playerEl.classList.add('parry-deflect', 'parry-cd'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
                         player.parryCooldown = 0;
@@ -276,7 +292,11 @@ function getDistance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
 function update() {
     if (isPaused) { requestAnimationFrame(update); return; }
 
-    // ★ 수정: 잡히지 않았고, 패링 상태가 아닐 때만 이동 가능 (패링 시 이동 불가) ★
+    // ★ 추가: 좌클릭 꾹 누르고 있으면 지속적으로 공격
+    if (isAttacking) {
+        doAttack();
+    }
+
     if (!player.isGrabbed && !player.isParrying) {
         if (keys.w && player.y > player.radius) player.y -= player.speed;
         if (keys.s && player.y < GAME_HEIGHT - player.radius) player.y += player.speed;
@@ -368,7 +388,7 @@ function update() {
         if (p.isBoss) {
             if (getDistance(p.x, p.y, player.x, player.y) < player.radius + p.radius) {
                 if (player.isParrying) {
-                    playSound('parryed'); // ★ 패링 성공 사운드 ★
+                    playSound('parryed'); 
                     player.isParrying = false; playerEl.classList.remove('parrying');
                     playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
                     player.parryCooldown = 0;
@@ -403,7 +423,7 @@ function update() {
                 p.el.remove(); projectiles.splice(i, 1);
                 
                 if (boss.hp <= 0) {
-                    playSound('dead'); // ★ 보스 사망 사운드 ★
+                    playSound('dead'); 
                     bossLevel++; boss.maxHp = 1000 + (bossLevel * 500); boss.hp = boss.maxHp; boss.dashSpeed += 1; 
                     bossNameEl.innerText = `BOSS (Lv. ${bossLevel})`;
                     player.hp = Math.min(player.maxHp, player.hp + 50);
@@ -416,7 +436,7 @@ function update() {
     }
 
     if (player.hp <= 0) {
-        playSound('dead'); // ★ 플레이어 사망 사운드 ★
+        playSound('dead'); 
         document.getElementById('final-score').innerText = `최종 도달: Boss Lv. ${bossLevel}\n플레이어 Lv. ${player.level}`;
         document.getElementById('game-over-modal').classList.remove('hidden');
         isPaused = true; 
