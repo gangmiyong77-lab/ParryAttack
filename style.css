@@ -11,7 +11,9 @@ body, html {
     box-shadow: inset 0 0 30px rgba(0, 255, 255, 0.1); overflow: hidden;
 }
 
-/* ★ 추가됨: 게임 연출용 (데미지 텍스트, 파티클, 잔상, 플래시) */
+/* ==========================================
+   ★ 연출용 이펙트 스타일 (Juice)
+   ========================================== */
 .damage-text {
     position: absolute; color: white; font-weight: bold; font-size: 24px;
     text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
@@ -49,7 +51,6 @@ body, html {
     animation: shadowFade 0.3s linear forwards;
 }
 @keyframes shadowFade { 0% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); } }
-/* ★ 여기까지 연출 스타일 */
 
 .screen-shake { animation: shakeScreen 0.3s cubic-bezier(.36,.07,.19,.97) both; }
 @keyframes shakeScreen {
@@ -58,11 +59,13 @@ body, html {
     30%, 50%, 70% { transform: translate3d(-15px, 5px, 0); }
     40%, 60% { transform: translate3d(15px, -5px, 0); }
 }
+
 .boss-hit-shake { animation: miniShake 0.15s cubic-bezier(.36,.07,.19,.97) both; }
 @keyframes miniShake {
     20%, 80% { transform: translate3d(3px, 0, 0); }
     40%, 60% { transform: translate3d(-5px, 2px, 0); }
 }
+/* ========================================== */
 
 #boss-ui { 
     position: absolute; transform: translate(-50%, -100%); 
