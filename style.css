@@ -12,66 +12,34 @@ body, html {
 }
 
 /* ==========================================
-   ★ 연출용 이펙트 스타일 (Juice)
+   ★ 연출용 이펙트 스타일
    ========================================== */
 .damage-text {
     position: absolute; color: white; font-weight: bold; font-size: 24px;
     text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
-    pointer-events: none; z-index: 100;
-    animation: floatUp 0.6s ease-out forwards;
+    pointer-events: none; z-index: 100; animation: floatUp 0.6s ease-out forwards;
 }
-.crit-text { color: #f1c40f; font-size: 32px; font-style: italic; }
+.crit-text { color: #2ecc71; font-size: 32px; font-style: italic; } /* 패링 힐 초록색 표시 겸용 */
 .player-dmg-text { color: #e74c3c; font-size: 28px; }
-@keyframes floatUp {
-    0% { transform: translate(-50%, 0) scale(0.5); opacity: 1; }
-    20% { transform: translate(-50%, -20px) scale(1.2); }
-    100% { transform: translate(-50%, -50px) scale(1); opacity: 0; }
-}
+@keyframes floatUp { 0% { transform: translate(-50%, 0) scale(0.5); opacity: 1; } 20% { transform: translate(-50%, -20px) scale(1.2); } 100% { transform: translate(-50%, -50px) scale(1); opacity: 0; } }
 
-.particle {
-    position: absolute; border-radius: 50%; pointer-events: none; z-index: 90;
-    animation: particleBurst 0.4s ease-out forwards;
-}
-@keyframes particleBurst {
-    0% { transform: translate(0, 0) scale(1); opacity: 1; }
-    100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
-}
+.particle { position: absolute; border-radius: 50%; pointer-events: none; z-index: 90; animation: particleBurst 0.4s ease-out forwards; }
+@keyframes particleBurst { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; } }
 
-.screen-flash {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: white; z-index: 80; pointer-events: none;
-    animation: flashFade 0.3s ease-out forwards;
-}
+.screen-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 80; pointer-events: none; animation: flashFade 0.3s ease-out forwards; }
 @keyframes flashFade { 0% { opacity: 0.8; } 100% { opacity: 0; } }
 
-.dash-shadow {
-    position: absolute; width: 50px; height: 50px; background-color: #3498db;
-    border-radius: 50%; transform: translate(-50%, -50%);
-    pointer-events: none; z-index: 5;
-    animation: shadowFade 0.3s linear forwards;
-}
+.dash-shadow { position: absolute; width: 50px; height: 50px; background-color: #3498db; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 5; animation: shadowFade 0.3s linear forwards; }
 @keyframes shadowFade { 0% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); } }
 
 .screen-shake { animation: shakeScreen 0.3s cubic-bezier(.36,.07,.19,.97) both; }
-@keyframes shakeScreen {
-    10%, 90% { transform: translate3d(-5px, 0, 0); }
-    20%, 80% { transform: translate3d(10px, 0, 0); }
-    30%, 50%, 70% { transform: translate3d(-15px, 5px, 0); }
-    40%, 60% { transform: translate3d(15px, -5px, 0); }
-}
+@keyframes shakeScreen { 10%, 90% { transform: translate3d(-5px, 0, 0); } 20%, 80% { transform: translate3d(10px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-15px, 5px, 0); } 40%, 60% { transform: translate3d(15px, -5px, 0); } }
 
 .boss-hit-shake { animation: miniShake 0.15s cubic-bezier(.36,.07,.19,.97) both; }
-@keyframes miniShake {
-    20%, 80% { transform: translate3d(3px, 0, 0); }
-    40%, 60% { transform: translate3d(-5px, 2px, 0); }
-}
+@keyframes miniShake { 20%, 80% { transform: translate3d(3px, 0, 0); } 40%, 60% { transform: translate3d(-5px, 2px, 0); } }
 /* ========================================== */
 
-#boss-ui { 
-    position: absolute; transform: translate(-50%, -100%); 
-    width: 100px; text-align: center; color: white; z-index: 20; 
-    pointer-events: none; transition: top 0.1s, left 0.1s;
-}
+#boss-ui { position: absolute; transform: translate(-50%, -100%); width: 100px; text-align: center; color: white; z-index: 20; pointer-events: none; transition: top 0.1s, left 0.1s; }
 .boss-name { font-size: 12px; font-weight: bold; margin-bottom: 3px; text-shadow: 1px 1px 2px black; }
 .boss-bar-bg { width: 100%; height: 8px; background-color: #555; border-radius: 4px; overflow: hidden; border: 1px solid #222; }
 
@@ -113,12 +81,21 @@ body, html {
 .slash { position: absolute; width: 30px; height: 70px; border-radius: 50%; border-right: 15px solid #00ffff; filter: drop-shadow(0 0 8px #00ffff); z-index: 8; }
 .boss-slash { border-right-color: #ff3333; filter: drop-shadow(0 0 10px #ff3333); width: 40px; height: 100px; border-right-width: 20px; }
 .heavy-slash { border-right-color: #9900ff; filter: drop-shadow(0 0 15px #9900ff); width: 80px; height: 180px; border-right-width: 30px; }
-.grab-slash { border-right-color: #000 !important; filter: drop-shadow(0 0 20px #8e44ad) !important; width: 90px; height: 150px; border-right-width: 25px; }
 
-/* 패턴 CSS들 통합 */
-.gaster-blaster { position: absolute; width: 45px; height: 35px; background: #111; border: 2px solid #fff; border-radius: 10px 20px 20px 10px; z-index: 15; transition: opacity 0.3s, transform 0.1s; }
-.blaster-telegraph { position: absolute; top: 50%; left: 45px; width: 1500px; height: 2px; background: rgba(255, 0, 0, 0.4); transform: translateY(-50%); pointer-events: none; }
-.laser-slash { background: #0ff !important; border: none !important; box-shadow: 0 0 15px #0ff, 0 0 30px #fff !important; border-radius: 10px !important; height: 25px !important; width: 150px !important; }
+/* ★ 신규 무기 투사체 디자인 */
+.slash-fire { border-right-color: #e74c3c !important; filter: drop-shadow(0 0 12px #e74c3c) !important; }
+.slash-ice { border-right-color: #74b9ff !important; filter: drop-shadow(0 0 15px #74b9ff) !important; width: 45px !important; height: 105px !important; border-right-width: 22px !important; }
+
+/* ★ 보라색 그랩 공격 수정 (Z-index 100으로 최상위 배치) */
+.grab-slash { border-right-color: #000 !important; filter: drop-shadow(0 0 20px #8e44ad) !important; width: 90px; height: 150px; border-right-width: 25px; z-index: 100 !important; }
+/* ★ 그랩 시 보스 몸 빛나는 효과 */
+.boss-grab-glow { box-shadow: 0 0 40px 10px rgba(142, 68, 173, 0.8) !important; }
+
+/* ★ 블래스터 수정 (크기 및 레이저 두께 얇게) */
+.gaster-blaster { position: absolute; width: 45px; height: 18px; background: #111; border: 2px solid #fff; border-radius: 10px 20px 20px 10px; z-index: 15; transition: opacity 0.3s, transform 0.1s; }
+.blaster-telegraph { position: absolute; top: 50%; left: 45px; width: 1500px; height: 1px; background: rgba(255, 0, 0, 0.4); transform: translateY(-50%); pointer-events: none; }
+.laser-slash { background: #0ff !important; border: none !important; box-shadow: 0 0 15px #0ff, 0 0 30px #fff !important; border-radius: 10px !important; height: 12px !important; width: 150px !important; z-index: 20;}
+
 .unparryable-attack { border-right-color: #ff0000 !important; background: #ff0000 !important; box-shadow: 0 0 15px #ff0000, 0 0 30px #ffaaaa !important; }
 @keyframes shakeHard { 0% { transform: translate(-50%, -50%) scale(0.8) rotate(0deg); } 25% { transform: translate(-52%, -50%) scale(0.8) rotate(-5deg); } 50% { transform: translate(-48%, -50%) scale(0.8) rotate(5deg); } 75% { transform: translate(-50%, -52%) scale(0.8) rotate(-5deg); } 100% { transform: translate(-50%, -48%) scale(0.8) rotate(5deg); } }
 .boss-shake { animation: shakeHard 0.1s infinite !important; }
@@ -143,8 +120,8 @@ body, html {
 .hidden { display: none !important; }
 .aug-btn { margin: 10px 0; padding: 15px; background: #2c3e50; color: white; border: 2px solid #34495e; border-radius: 8px; cursor: pointer; width: 100%; text-align: center; display: block; font-size: 16px; transition: all 0.2s; }
 .aug-btn:hover { background: #34495e; border-color: #f1c40f; transform: scale(1.02); }
-.augments button, .restart-btn { display: block; width: 100%; margin: 10px 0; padding: 15px; font-size: 16px; background: #2980b9; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; font-weight: bold;}
-.augments button:hover, .restart-btn:hover { background: #3498db; transform: scale(1.05); }
+.restart-btn { display: block; width: 100%; margin: 10px 0; padding: 15px; font-size: 16px; background: #2980b9; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; font-weight: bold;}
+.restart-btn:hover { background: #3498db; transform: scale(1.05); }
 
 #mobile-controls { display: none; position: absolute; bottom: 30px; width: 100%; height: 150px; pointer-events: none; z-index: 50; justify-content: space-between; padding: 0 20px; box-sizing: border-box; }
 .dpad, .action-btns { pointer-events: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
