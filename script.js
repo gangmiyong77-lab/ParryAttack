@@ -97,7 +97,6 @@ function spawnParticles(x, y, color, count) {
     }
 }
 
-// ★ 추가됨: 화염 잔상 이펙트
 function spawnFireTrail(x, y) {
     let t = document.createElement('div'); t.className = 'fire-trail';
     t.style.left = x + 'px'; t.style.top = y + 'px';
@@ -147,7 +146,6 @@ function spawnBosses() {
             hp: maxHp, maxHp: maxHp, state: 'idle', stateTimer: Math.floor(Math.random() * 40),
             vx: 2 * (i % 2 === 0 ? 1 : -1), vy: 0, dashSpeed: 20 + bossLevel,
             dashHitDelay: 0,
-            // ★ 추가됨: 빙결 관련 속성
             freezeStack: 0, isFrozen: false, freezeTimer: 0,
             el: el, uiEl: uiEl, hpFill: hpFill
         });
@@ -263,7 +261,6 @@ function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = fal
     el.className = `slash ${isBoss ? 'boss-slash' : ''} ${isHeavy ? 'heavy-slash' : ''} ${isGrab ? 'grab-slash' : ''} ${isLaser ? 'laser-slash' : ''} ${isUnparryable ? 'unparryable-attack' : ''}`;
     if(isHeavy && !isBoss && !isLaser) el.style.borderRightColor = "#00ffff";
 
-    // 무기에 따른 시각 효과
     if (!isBoss) {
         if (player.weaponType === 'fire') { el.classList.add('slash-fire'); }
         else if (player.weaponType === 'ice') { el.classList.add('slash-ice'); size *= 1.5; }
@@ -276,17 +273,15 @@ function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = fal
 
 function bossLogic() {
     bosses.forEach(boss => {
-        // ★ 빙결 상태 처리 (모든 움직임과 패턴 정지)
         if (boss.isFrozen) {
             boss.freezeTimer--;
             if (boss.freezeTimer <= 0) {
                 boss.isFrozen = false;
                 boss.el.classList.remove('frozen-boss');
             }
-            // 빙결 중이어도 밀려남(x, y 렌더링) 처리는 유지
             boss.el.style.left = boss.x + 'px'; boss.el.style.top = boss.y + 'px';
             boss.uiEl.style.left = boss.x + 'px'; boss.uiEl.style.top = (boss.y - boss.radius - 15) + 'px';
-            return; // ★ 빙결 시 아래의 패턴 로직을 전부 스킵!
+            return;
         }
 
         if (boss.dashHitDelay > 0) boss.dashHitDelay--;
@@ -357,7 +352,8 @@ function bossLogic() {
 
                             if (player.parryHeal) { player.hp = Math.min(player.maxHp, player.hp + 20); spawnDamageText(player.x, player.y, 20, 'heal'); }
 
-                            player.parryCooldown = 15; parryStatusEl.innerText = "돌진 저지 성공! (보스 기절)"; parryStatusEl.style.color = "#2ecc71";
+                            // 수정됨: 보스 돌진 저지 성공 시 쿨타임 0초 초기화
+                            player.parryCooldown = 0; parryStatusEl.innerText = "돌진 저지 성공! (보스 기절)"; parryStatusEl.style.color = "#2ecc71";
                             boss.hp -= 100; gainExp(50); boss.stateTimer = 90;
                             bossHitEffect(boss, boss.x, boss.y, 100, true); checkBossDeath(boss);
                         } else { takeDamage(30); boss.stateTimer = 90; }
@@ -529,7 +525,6 @@ function update() {
         p.el.style.transform = `translate(-50%, -50%) rotate(${p.angle}rad)`;
         p.timer++;
 
-        // ★ 화염검일 때 투사체 궤적에 화염 파티클 스폰
         if (!p.isBoss && player.weaponType === 'fire' && p.timer % 2 === 0) {
             spawnFireTrail(p.x, p.y);
         }
@@ -549,7 +544,8 @@ function update() {
 
                     if (player.parryHeal) { player.hp = Math.min(player.maxHp, player.hp + 20); spawnDamageText(player.x, player.y, 20, 'heal'); }
 
-                    player.parryCooldown = 15;
+                    // 수정됨: 투사체 패링 성공 시 쿨타임 0초 초기화
+                    player.parryCooldown = 0;
                     floatingCdEl.innerText = ""; parryStatusEl.innerText = p.isGrab ? "잡기 무효화 성공!" : "패링 반사 성공!";
                     parryStatusEl.style.color = "#2ecc71";
 
@@ -577,18 +573,17 @@ function update() {
                     if (player.lifesteal > 0 && player.hp < player.maxHp) player.hp = Math.min(player.maxHp, player.hp + player.lifesteal);
                     updateUI(); bossHitEffect(b, p.x, p.y, p.damage, false);
                     
-                    // ★ 빙결 및 화염 메카닉
                     if (player.weaponType === 'ice') {
                         b.freezeStack++;
-                        spawnParticles(p.x, p.y, '#00ffff', 5); // 서리 이펙트
+                        spawnParticles(p.x, p.y, '#00ffff', 5);
                         if (b.freezeStack >= 4) {
-                            b.isFrozen = true; b.freezeTimer = 180; b.freezeStack = 0; // 3초 빙결
+                            b.isFrozen = true; b.freezeTimer = 180; b.freezeStack = 0;
                             b.el.classList.add('frozen-boss');
                             spawnDamageText(b.x, b.y, 'FREEZE!', 'crit');
                         }
                     } else if (player.weaponType === 'fire') {
-                        spawnParticles(p.x, p.y, '#e67e22', 15); // 폭발 이펙트
-                        b.hp -= 5; // 추가 화염 데미지
+                        spawnParticles(p.x, p.y, '#e67e22', 15);
+                        b.hp -= 5;
                         spawnDamageText(b.x, b.y + 20, 5, 'fire');
                     }
 
@@ -676,10 +671,11 @@ function showLevelUpModal() {
     });
 }
 
+// 수정됨: 경험치 획득량 3배 상향, 요구 경험치 증가폭 대폭 완화
 function gainExp(amount) {
-    player.exp += (amount * 0.5);
+    player.exp += (amount * 1.5);
     if (player.exp >= player.maxExp) {
-        player.level++; player.exp -= player.maxExp; player.maxExp = Math.floor(player.maxExp * 1.3);
+        player.level++; player.exp -= player.maxExp; player.maxExp = Math.floor(player.maxExp * 1.15);
         updateUI(); showLevelUpModal();
     }
     updateUI();
