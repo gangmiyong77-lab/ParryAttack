@@ -77,8 +77,8 @@ let bossLevel = 1; let bosses = []; let projectiles = []; let blasters = [];
 
 function spawnDamageText(x, y, damage, type = 'normal') {
     const el = document.createElement('div');
-    el.className = 'damage-text ' + (type === 'crit' ? 'crit-text' : type === 'player' ? 'player-dmg-text' : '');
-    el.innerText = isNaN(damage) ? damage : Math.floor(damage);
+    el.className = 'damage-text ' + (type === 'crit' ? 'crit-text' : type === 'fire' ? 'fire-text' : type === 'heal' ? 'heal-text' : type === 'player' ? 'player-dmg-text' : '');
+    el.innerText = isNaN(damage) ? damage : (type === 'heal' ? `+${damage} HP` : Math.floor(damage));
     el.style.left = x + 'px'; el.style.top = (y - 30) + 'px';
     const randX = (Math.random() - 0.5) * 40; el.style.transform = `translateX(calc(-50% + ${randX}px))`;
     container.appendChild(el); setTimeout(() => el.remove(), 600);
@@ -95,6 +95,13 @@ function spawnParticles(x, y, color, count) {
         p.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
         container.appendChild(p); setTimeout(() => p.remove(), 400);
     }
+}
+
+// ★ 추가됨: 화염 잔상 이펙트
+function spawnFireTrail(x, y) {
+    let t = document.createElement('div'); t.className = 'fire-trail';
+    t.style.left = x + 'px'; t.style.top = y + 'px';
+    container.appendChild(t); setTimeout(() => t.remove(), 300);
 }
 
 function createScreenFlash() {
@@ -140,6 +147,8 @@ function spawnBosses() {
             hp: maxHp, maxHp: maxHp, state: 'idle', stateTimer: Math.floor(Math.random() * 40),
             vx: 2 * (i % 2 === 0 ? 1 : -1), vy: 0, dashSpeed: 20 + bossLevel,
             dashHitDelay: 0,
+            // ★ 추가됨: 빙결 관련 속성
+            freezeStack: 0, isFrozen: false, freezeTimer: 0,
             el: el, uiEl: uiEl, hpFill: hpFill
         });
     }
@@ -254,18 +263,32 @@ function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = fal
     el.className = `slash ${isBoss ? 'boss-slash' : ''} ${isHeavy ? 'heavy-slash' : ''} ${isGrab ? 'grab-slash' : ''} ${isLaser ? 'laser-slash' : ''} ${isUnparryable ? 'unparryable-attack' : ''}`;
     if(isHeavy && !isBoss && !isLaser) el.style.borderRightColor = "#00ffff";
 
+    // 무기에 따른 시각 효과
     if (!isBoss) {
-        if (player.weaponType === 'fire') { el.classList.add('slash-fire'); damage *= 1.5; }
+        if (player.weaponType === 'fire') { el.classList.add('slash-fire'); }
         else if (player.weaponType === 'ice') { el.classList.add('slash-ice'); size *= 1.5; }
     }
 
     el.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
     container.appendChild(el);
-    projectiles.push({ x, y, angle, speed, damage, isBoss, radius: (!isBoss && player.weaponType === 'ice' ? size/2 * 1.5 : size/2), el, isGrab, owner, isUnparryable });
+    projectiles.push({ x, y, angle, speed, damage, isBoss, radius: (!isBoss && player.weaponType === 'ice' ? size/2 * 1.5 : size/2), el, isGrab, owner, isUnparryable, timer: 0 });
 }
 
 function bossLogic() {
     bosses.forEach(boss => {
+        // ★ 빙결 상태 처리 (모든 움직임과 패턴 정지)
+        if (boss.isFrozen) {
+            boss.freezeTimer--;
+            if (boss.freezeTimer <= 0) {
+                boss.isFrozen = false;
+                boss.el.classList.remove('frozen-boss');
+            }
+            // 빙결 중이어도 밀려남(x, y 렌더링) 처리는 유지
+            boss.el.style.left = boss.x + 'px'; boss.el.style.top = boss.y + 'px';
+            boss.uiEl.style.left = boss.x + 'px'; boss.uiEl.style.top = (boss.y - boss.radius - 15) + 'px';
+            return; // ★ 빙결 시 아래의 패턴 로직을 전부 스킵!
+        }
+
         if (boss.dashHitDelay > 0) boss.dashHitDelay--;
 
         if (boss.state === 'idle') {
@@ -332,7 +355,7 @@ function bossLogic() {
                             player.autoParryTimer = 6; playSound('parryed'); player.isParrying = false;
                             playerEl.classList.remove('parrying', 'parry-cd'); playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
 
-                            if (player.parryHeal) { player.hp = Math.min(player.maxHp, player.hp + 20); spawnDamageText(player.x, player.y, '+20 HP', 'crit'); }
+                            if (player.parryHeal) { player.hp = Math.min(player.maxHp, player.hp + 20); spawnDamageText(player.x, player.y, 20, 'heal'); }
 
                             player.parryCooldown = 15; parryStatusEl.innerText = "돌진 저지 성공! (보스 기절)"; parryStatusEl.style.color = "#2ecc71";
                             boss.hp -= 100; gainExp(50); boss.stateTimer = 90;
@@ -488,7 +511,6 @@ function update() {
         } else { skillStatusEl.innerText = "회전베기: 준비 완료!"; skillStatusEl.style.color = "#f1c40f"; }
     }
 
-    // ★ 복구됨: 보스 행동 및 이동 로직 실행
     bossLogic();
 
     for (let i = blasters.length - 1; i >= 0; i--) {
@@ -505,6 +527,12 @@ function update() {
         p.x += Math.cos(p.angle) * p.speed; p.y += Math.sin(p.angle) * p.speed;
         p.el.style.left = p.x + 'px'; p.el.style.top = p.y + 'px';
         p.el.style.transform = `translate(-50%, -50%) rotate(${p.angle}rad)`;
+        p.timer++;
+
+        // ★ 화염검일 때 투사체 궤적에 화염 파티클 스폰
+        if (!p.isBoss && player.weaponType === 'fire' && p.timer % 2 === 0) {
+            spawnFireTrail(p.x, p.y);
+        }
 
         if (p.x < -100 || p.x > GAME_WIDTH + 100 || p.y < -100 || p.y > GAME_HEIGHT + 100) {
             p.el.remove(); projectiles.splice(i, 1); continue;
@@ -519,7 +547,7 @@ function update() {
                     player.autoParryTimer = 6; playSound('parryed'); player.isParrying = false;
                     playerEl.classList.remove('parrying', 'parry-cd'); playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
 
-                    if (player.parryHeal) { player.hp = Math.min(player.maxHp, player.hp + 20); spawnDamageText(player.x, player.y, '+20 HP', 'crit'); }
+                    if (player.parryHeal) { player.hp = Math.min(player.maxHp, player.hp + 20); spawnDamageText(player.x, player.y, 20, 'heal'); }
 
                     player.parryCooldown = 15;
                     floatingCdEl.innerText = ""; parryStatusEl.innerText = p.isGrab ? "잡기 무효화 성공!" : "패링 반사 성공!";
@@ -548,6 +576,22 @@ function update() {
                     b.hp -= p.damage; gainExp(p.damage);
                     if (player.lifesteal > 0 && player.hp < player.maxHp) player.hp = Math.min(player.maxHp, player.hp + player.lifesteal);
                     updateUI(); bossHitEffect(b, p.x, p.y, p.damage, false);
+                    
+                    // ★ 빙결 및 화염 메카닉
+                    if (player.weaponType === 'ice') {
+                        b.freezeStack++;
+                        spawnParticles(p.x, p.y, '#00ffff', 5); // 서리 이펙트
+                        if (b.freezeStack >= 4) {
+                            b.isFrozen = true; b.freezeTimer = 180; b.freezeStack = 0; // 3초 빙결
+                            b.el.classList.add('frozen-boss');
+                            spawnDamageText(b.x, b.y, 'FREEZE!', 'crit');
+                        }
+                    } else if (player.weaponType === 'fire') {
+                        spawnParticles(p.x, p.y, '#e67e22', 15); // 폭발 이펙트
+                        b.hp -= 5; // 추가 화염 데미지
+                        spawnDamageText(b.x, b.y + 20, 5, 'fire');
+                    }
+
                     p.el.remove(); projectiles.splice(i, 1); checkBossDeath(b); break;
                 }
             }
@@ -564,20 +608,25 @@ function update() {
 }
 
 window.restartGame = function() {
-    player = initPlayer(); hitStopFrames = 0;
-    document.getElementById('player-sword').style.background = 'linear-gradient(to right, #95a5a6, #ecf0f1)';
+    player.hp = player.maxHp; 
+    player.x = GAME_WIDTH / 2; player.y = GAME_HEIGHT - 100;
+    player.isGrabbed = false; player.grabTimer = 0; 
+    player.isParrying = false; player.parryTimer = 0; player.parryCooldown = 0; player.autoParryTimer = 0; 
+    player.attackCooldown = 0; player.burstTimer = 0; player.attackQueue = 0; player.skillCooldown = 0;
+    player.isDashing = false; player.dashTimer = 0; player.dashCooldown = 0; 
+    hitStopFrames = 0;
 
     projectiles.forEach(p => p.el.remove()); projectiles = [];
     blasters.forEach(b => b.el.remove()); blasters = [];
 
-    document.querySelectorAll('.unparryable-hit').forEach(el => el.remove());
-    document.querySelectorAll('.impact-effect').forEach(el => el.remove());
-    document.querySelectorAll('.damage-text, .particle, .dash-shadow, .screen-flash').forEach(el => el.remove());
+    document.querySelectorAll('.unparryable-hit, .impact-effect, .damage-text, .particle, .fire-trail, .dash-shadow, .screen-flash').forEach(el => el.remove());
     document.getElementById('game-over-modal').classList.add('hidden');
 
     const btnSkillEl = document.getElementById('btn-skill');
-    if (btnSkillEl) btnSkillEl.classList.add('hidden');
-    if (skillStatusEl) skillStatusEl.classList.add('hidden');
+    if (player.hasSkill) {
+        if (btnSkillEl) btnSkillEl.classList.remove('hidden');
+        if (skillStatusEl) skillStatusEl.classList.remove('hidden');
+    }
 
     playerEl.classList.remove('player-grabbed', 'parrying', 'parry-deflect', 'parry-cd', 'hit-flash');
     container.classList.remove('screen-shake', 'boss-hit-shake');
@@ -608,8 +657,8 @@ function showLevelUpModal() {
         { id: 'cooldown', name: '⚡ 가벼운 몸놀림', desc: '평타 공격 쿨타임 감소' },
         { id: 'multishot', name: '🏹 다중 발사', desc: '평타 발사 개수 1개 추가' },
         { id: 'maxhp', name: '💖 강인한 체력', desc: '최대 체력 +30 및 100% 회복' },
-        { id: 'weapon_fire', name: '🔥 화염검 (무기)', desc: '평타 붉은색 변경 및 데미지 1.5배' },
-        { id: 'weapon_ice', name: '❄️ 얼음검 (무기)', desc: '평타 푸른색 변경 및 크기 1.5배' },
+        { id: 'weapon_fire', name: '🔥 화염검 (무기)', desc: '화염 잔상 및 매 타격시 추가 화염 피해' },
+        { id: 'weapon_ice', name: '❄️ 얼음검 (무기)', desc: '서리 이펙트 및 4타 적중시 3초간 빙결' },
         { id: 'skill_dash', name: '💨 돌진 베기 (스킬)', desc: '대시 중 적과 충돌 시 관통 데미지' },
         { id: 'skill_parry_heal', name: '💚 치유의 패링 (스킬)', desc: '패링 성공 시 체력 20 회복' },
         { id: 'skill_wave', name: '🌊 파도 베기 (스킬)', desc: '평타 시 30% 확률로 3갈래 검기 발사' }
