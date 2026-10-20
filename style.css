@@ -11,20 +11,28 @@ body, html {
     box-shadow: inset 0 0 30px rgba(0, 255, 255, 0.1); overflow: hidden;
 }
 
-/* ==========================================
-   ★ 연출용 이펙트 스타일
-   ========================================== */
+/* ★ 추가됨: 데미지 텍스트 종류 (화염, 빙결) */
 .damage-text {
     position: absolute; color: white; font-weight: bold; font-size: 24px;
     text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
     pointer-events: none; z-index: 100; animation: floatUp 0.6s ease-out forwards;
 }
-.crit-text { color: #2ecc71; font-size: 32px; font-style: italic; } /* 패링 힐 초록색 표시 겸용 */
+.crit-text { color: #00ffff; font-size: 32px; font-style: italic; } /* 빙결 텍스트용 사이언색 */
+.fire-text { color: #e67e22; font-size: 20px; } /* 화염 추가타 데미지 */
+.heal-text { color: #2ecc71; font-size: 28px; } /* 패링 힐 데미지 */
 .player-dmg-text { color: #e74c3c; font-size: 28px; }
 @keyframes floatUp { 0% { transform: translate(-50%, 0) scale(0.5); opacity: 1; } 20% { transform: translate(-50%, -20px) scale(1.2); } 100% { transform: translate(-50%, -50px) scale(1); opacity: 0; } }
 
 .particle { position: absolute; border-radius: 50%; pointer-events: none; z-index: 90; animation: particleBurst 0.4s ease-out forwards; }
 @keyframes particleBurst { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; } }
+
+/* ★ 추가됨: 화염검 궤적 파티클 */
+.fire-trail {
+    position: absolute; width: 12px; height: 12px; background-color: #e74c3c; border-radius: 50%;
+    box-shadow: 0 0 10px #f1c40f; pointer-events: none; z-index: 7;
+    animation: fireFade 0.3s ease-out forwards; transform: translate(-50%, -50%);
+}
+@keyframes fireFade { 0% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); } }
 
 .screen-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 80; pointer-events: none; animation: flashFade 0.3s ease-out forwards; }
 @keyframes flashFade { 0% { opacity: 0.8; } 100% { opacity: 0; } }
@@ -37,7 +45,6 @@ body, html {
 
 .boss-hit-shake { animation: miniShake 0.15s cubic-bezier(.36,.07,.19,.97) both; }
 @keyframes miniShake { 20%, 80% { transform: translate3d(3px, 0, 0); } 40%, 60% { transform: translate3d(-5px, 2px, 0); } }
-/* ========================================== */
 
 #boss-ui { position: absolute; transform: translate(-50%, -100%); width: 100px; text-align: center; color: white; z-index: 20; pointer-events: none; transition: top 0.1s, left 0.1s; }
 .boss-name { font-size: 12px; font-weight: bold; margin-bottom: 3px; text-shadow: 1px 1px 2px black; }
@@ -48,7 +55,7 @@ body, html {
 .bar-bg { width: 100%; height: 28px; background-color: #555; border-radius: 14px; overflow: hidden; margin-bottom: 5px; border: 2px solid #222; }
 .bar { height: 100%; transition: width 0.1s linear; }
 .hp-fill { background-color: #e74c3c; width: 100%; }
-.boss-hp-fill { background-color: #8e44ad; }
+.boss-hp-fill { background-color: #8e44ad; transition: width 0.1s; }
 .exp-fill { background-color: #f1c40f; width: 0%; }
 #parry-status { font-weight: bold; color: #3498db; margin-top: 5px; text-shadow: 1px 1px 2px black; font-size: 18px; }
 #skill-status { font-weight: bold; color: #f1c40f; margin-top: 5px; text-shadow: 1px 1px 2px black; font-size: 18px; }
@@ -63,7 +70,14 @@ body, html {
 .eye-glow .boss-eye::after { background-color: #fffa65; }
 
 #player { width: 50px; height: 50px; background-color: #3498db; z-index: 10; transition: background-color 0.2s, box-shadow 0.2s; }
-#boss { width: 100px; height: 100px; background-color: #c0392b; z-index: 5; }
+#boss { width: 100px; height: 100px; background-color: #c0392b; z-index: 5; transition: filter 0.3s; }
+
+/* ★ 추가됨: 빙결된 보스 효과 */
+.frozen-boss {
+    filter: hue-rotate(180deg) brightness(1.5) saturate(200%) !important;
+    box-shadow: 0 0 30px #00ffff !important;
+    animation: none !important; /* 둥둥 떠다니는 모션 정지 */
+}
 
 #floating-cd { position: absolute; top: -20px; right: -30px; font-size: 14px; font-weight: bold; color: #e74c3c; text-shadow: 1px 1px 2px black; white-space: nowrap; pointer-events: none; }
 .parry-cd { background-color: #7f8c8d !important; filter: brightness(0.8); }
@@ -72,7 +86,7 @@ body, html {
 .hit-flash { animation: playerHit 0.3s ease-out !important; }
 @keyframes playerHit { 0% { background-color: white; transform: translate(-50%, -50%) scale(1.3); } 50% { background-color: #ff3333; transform: translate(-50%, -50%) scale(0.8); } 100% { background-color: #3498db; transform: translate(-50%, -50%) scale(1); } }
 .boss-hit-flash { animation: bossHit 0.2s ease-out !important; }
-@keyframes bossHit { 0% { background-color: white; transform: translate(-50%, -50%) scale(1.1); } 100% { background-color: #c0392b; transform: translate(-50%, -50%) scale(1); } }
+@keyframes bossHit { 0% { background-color: white; transform: translate(-50%, -50%) scale(1.1); } 100% { background-color: inherit; transform: translate(-50%, -50%) scale(1); } }
 .impact-effect { position: absolute; width: 100px; height: 4px; background: #fff; box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff; border-radius: 2px; z-index: 60; pointer-events: none; animation: slashImpact 0.2s ease-out forwards; transform: translate(-50%, -50%) rotate(var(--rot)); }
 @keyframes slashImpact { 0% { opacity: 1; transform: translate(-50%, -50%) rotate(var(--rot)) scaleX(0.2) scaleY(3); } 100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--rot)) scaleX(1.5) scaleY(0); } }
 
@@ -81,25 +95,20 @@ body, html {
 .slash { position: absolute; width: 30px; height: 70px; border-radius: 50%; border-right: 15px solid #00ffff; filter: drop-shadow(0 0 8px #00ffff); z-index: 8; }
 .boss-slash { border-right-color: #ff3333; filter: drop-shadow(0 0 10px #ff3333); width: 40px; height: 100px; border-right-width: 20px; }
 .heavy-slash { border-right-color: #9900ff; filter: drop-shadow(0 0 15px #9900ff); width: 80px; height: 180px; border-right-width: 30px; }
-
-/* ★ 신규 무기 투사체 디자인 */
-.slash-fire { border-right-color: #e74c3c !important; filter: drop-shadow(0 0 12px #e74c3c) !important; }
-.slash-ice { border-right-color: #74b9ff !important; filter: drop-shadow(0 0 15px #74b9ff) !important; width: 45px !important; height: 105px !important; border-right-width: 22px !important; }
-
-/* ★ 보라색 그랩 공격 수정 (Z-index 100으로 최상위 배치) */
 .grab-slash { border-right-color: #000 !important; filter: drop-shadow(0 0 20px #8e44ad) !important; width: 90px; height: 150px; border-right-width: 25px; z-index: 100 !important; }
-/* ★ 그랩 시 보스 몸 빛나는 효과 */
-.boss-grab-glow { box-shadow: 0 0 40px 10px rgba(142, 68, 173, 0.8) !important; }
 
-/* ★ 블래스터 수정 (크기 및 레이저 두께 얇게) */
+/* 무기 이펙트 */
+.slash-fire { border-right-color: #f1c40f !important; filter: drop-shadow(0 0 15px #e74c3c) !important; }
+.slash-ice { border-right-color: #fff !important; filter: drop-shadow(0 0 20px #00ffff) !important; width: 45px !important; height: 105px !important; border-right-width: 22px !important; }
+
+.boss-grab-glow { box-shadow: 0 0 40px 10px rgba(142, 68, 173, 0.8) !important; }
 .gaster-blaster { position: absolute; width: 45px; height: 18px; background: #111; border: 2px solid #fff; border-radius: 10px 20px 20px 10px; z-index: 15; transition: opacity 0.3s, transform 0.1s; }
 .blaster-telegraph { position: absolute; top: 50%; left: 45px; width: 1500px; height: 1px; background: rgba(255, 0, 0, 0.4); transform: translateY(-50%); pointer-events: none; }
 .laser-slash { background: #0ff !important; border: none !important; box-shadow: 0 0 15px #0ff, 0 0 30px #fff !important; border-radius: 10px !important; height: 12px !important; width: 150px !important; z-index: 20;}
-
 .unparryable-attack { border-right-color: #ff0000 !important; background: #ff0000 !important; box-shadow: 0 0 15px #ff0000, 0 0 30px #ffaaaa !important; }
+
 @keyframes shakeHard { 0% { transform: translate(-50%, -50%) scale(0.8) rotate(0deg); } 25% { transform: translate(-52%, -50%) scale(0.8) rotate(-5deg); } 50% { transform: translate(-48%, -50%) scale(0.8) rotate(5deg); } 75% { transform: translate(-50%, -52%) scale(0.8) rotate(-5deg); } 100% { transform: translate(-50%, -48%) scale(0.8) rotate(5deg); } }
 .boss-shake { animation: shakeHard 0.1s infinite !important; }
-
 .idle { animation: float 2s ease-in-out infinite; }
 @keyframes float { 0%, 100% { margin-top: 0; } 50% { margin-top: -10px; } }
 .attack-anim #player-sword { animation: swing 0.15s ease-out; }
