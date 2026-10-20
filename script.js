@@ -488,6 +488,9 @@ function update() {
         } else { skillStatusEl.innerText = "회전베기: 준비 완료!"; skillStatusEl.style.color = "#f1c40f"; }
     }
 
+    // ★ 복구됨: 보스 행동 및 이동 로직 실행
+    bossLogic();
+
     for (let i = blasters.length - 1; i >= 0; i--) {
         let bl = blasters[i]; bl.timer--;
         if (bl.timer === 0) {
