@@ -4,14 +4,6 @@ const floatingCdEl = document.getElementById('floating-cd');
 const parryStatusEl = document.getElementById('parry-status');
 const skillStatusEl = document.getElementById('skill-status');
 
-// 플레이어 검 요소 동적 생성
-if (!document.getElementById('player-sword')) {
-    const sw = document.createElement('div');
-    sw.id = 'player-sword';
-    playerEl.appendChild(sw);
-}
-const playerSwordEl = document.getElementById('player-sword');
-
 // ================= 동적 UI 및 CSS 스타일 자동 생성 =================
 const style = document.createElement('style');
 style.innerHTML = `
@@ -25,44 +17,50 @@ style.innerHTML = `
     .mob-btn:active { background: rgba(255,255,255,0.5); }
     .mob-btn.hidden { display: none !important; }
 
-    /* 플레이어 및 보스 인게임 외형 */
-    #player { background: #3498db; border: 2px solid #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; z-index: 20; }
-    #player-sword { position: absolute; width: 45px; height: 10px; background: #bdc3c7; left: 25px; border-radius: 5px; transform-origin: left center; transition: all 0.3s; z-index: -1; }
+    /* 플레이어 및 보스 인게임 외형 (눈, 무기 추가) */
+    #player { background: #3498db; border: 2px solid #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; z-index: 20; position: relative; }
+    #player-sword { position: absolute; width: 45px; height: 10px; background: #bdc3c7; left: 25px; top: 20px; border-radius: 5px; transform-origin: left center; transition: all 0.3s; z-index: -1; }
     .attack-anim #player-sword { animation: playerSwing 0.2s ease-out; }
     @keyframes playerSwing { 0% { transform: rotate(0deg); } 50% { transform: rotate(140deg); } 100% { transform: rotate(0deg); } }
 
-    .boss-helmet { position: absolute; top: -10px; left: 5px; width: 40px; height: 20px; background: #7f8c8d; border-radius: 15px 15px 0 0; border: 2px solid #2c3e50; }
-    .boss-crown { position: absolute; top: -15px; left: 5px; width: 40px; height: 20px; background: linear-gradient(#f1c40f, #e67e22); clip-path: polygon(0 0, 20% 100%, 50% 0, 80% 100%, 100% 0, 100% 100%, 0 100%); }
-    .boss-weapon-ui { position: absolute; top: 20px; left: -30px; width: 60px; height: 15px; background: #2c3e50; border-radius: 5px; transform-origin: right center; animation: bossWeaponIdle 2s infinite alternate; }
-    @keyframes bossWeaponIdle { 0% { transform: rotate(-10deg); } 100% { transform: rotate(10deg); } }
+    /* 눈 (흰자 + 검은자) */
+    .ig-eyes { position: absolute; top: 12px; width: 100%; display: flex; justify-content: center; gap: 6px; z-index: 5; pointer-events: none; }
+    .ig-eye { width: 12px; height: 12px; background: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 3px rgba(0,0,0,0.5); }
+    .ig-pupil { width: 6px; height: 6px; background: black; border-radius: 50%; transition: 0.2s; }
+    
+    /* 적 공격 예고 시 눈동자가 붉게 빛남 */
+    .eye-glow .ig-pupil { background: red; box-shadow: 0 0 10px red; transform: scale(1.2); }
+
+    /* 보스 전용 무기 및 모션 */
+    .ig-boss-weapon { position: absolute; top: 20px; left: -30px; width: 50px; height: 12px; background: #7f8c8d; border-radius: 4px; transform-origin: right center; animation: igBossWeaponIdle 2s infinite alternate; z-index: -1; }
+    .boss-attack-anim .ig-boss-weapon { animation: igBossSwing 0.2s ease-out; }
+    @keyframes igBossWeaponIdle { 0% { transform: rotate(-10deg); } 100% { transform: rotate(10deg); } }
+    @keyframes igBossSwing { 0% { transform: rotate(0deg); } 50% { transform: rotate(-130deg); } 100% { transform: rotate(0deg); } }
+
+    .boss-helmet { position: absolute; top: -10px; left: 5px; width: 40px; height: 20px; background: #7f8c8d; border-radius: 15px 15px 0 0; border: 2px solid #2c3e50; z-index: 6; }
+    .boss-crown { position: absolute; top: -15px; left: 5px; width: 40px; height: 20px; background: linear-gradient(#f1c40f, #e67e22); clip-path: polygon(0 0, 20% 100%, 50% 0, 80% 100%, 100% 0, 100% 100%, 0 100%); z-index: 6; }
 
     /* 오프닝 화면 */
     #opening-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 25, 30, 0.95); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
     .title-text { font-size: 48px; font-weight: bold; text-shadow: 0 0 20px #3498db; margin-bottom: 10px; text-align: center; line-height: 1.2; }
     .subtitle-text { font-size: 18px; color: #aaa; margin-bottom: 40px; }
     
-    /* 오프닝 애니메이션 (인게임 캐릭터와 흡사하게) */
+    /* 오프닝 애니메이션 */
     .clash-container { position: relative; width: 300px; height: 120px; margin-bottom: 30px; display: flex; align-items: center; }
     .clash-char { width: 50px; height: 50px; border-radius: 50%; position: absolute; border: 2px solid white; box-shadow: 0 0 15px rgba(255,255,255,0.5); display: flex; align-items: center; }
     
-    /* 캐릭터 눈 */
-    .eyes { position: absolute; top: 12px; width: 100%; display: flex; justify-content: center; gap: 8px; z-index: 5; }
-    .eye { width: 6px; height: 6px; background: white; border-radius: 50%; box-shadow: 0 0 5px white; }
-    .clash-boss .eye { background: #f1c40f; box-shadow: 0 0 8px red; }
-
     .clash-player { background: #3498db; left: 0; animation: clashLeft 2.5s infinite; justify-content: flex-end; }
-    .intro-sword { position: absolute; right: -30px; width: 40px; height: 8px; background: #bdc3c7; border-radius: 4px; transform-origin: left center; animation: swingPlayer 2.5s infinite; }
+    .intro-sword { position: absolute; right: -30px; top: 20px; width: 40px; height: 8px; background: #bdc3c7; border-radius: 4px; transform-origin: left center; animation: introSwingPlayer 2.5s infinite; }
     
     .clash-boss { background: #8e44ad; right: 0; border: 4px solid #f1c40f; animation: clashRight 2.5s infinite; justify-content: flex-start; }
-    .intro-boss-weapon { position: absolute; left: -40px; width: 50px; height: 12px; background: #2c3e50; border-radius: 4px; transform-origin: right center; animation: swingBoss 2.5s infinite; }
-    .intro-crown { position: absolute; top: -15px; left: 5px; width: 40px; height: 20px; background: linear-gradient(#f1c40f, #e67e22); clip-path: polygon(0 0, 20% 100%, 50% 0, 80% 100%, 100% 0, 100% 100%, 0 100%); z-index: 6; }
+    .intro-boss-weapon { position: absolute; left: -40px; top: 20px; width: 50px; height: 12px; background: #2c3e50; border-radius: 4px; transform-origin: right center; animation: introSwingBoss 2.5s infinite; }
     
     .clash-spark { position: absolute; left: 135px; width: 30px; height: 30px; font-size: 40px; line-height: 30px; text-align: center; opacity: 0; animation: sparkAnim 2.5s infinite; z-index: 10; }
     
     @keyframes clashLeft { 0% { left: 0; } 15% { left: 100px; } 25% { left: 80px; } 35% { left: 100px; } 45% { left: 80px; } 55% { left: 100px; } 70% { left: 0; } 100% { left: 0; } }
     @keyframes clashRight { 0% { right: 0; } 15% { right: 100px; } 25% { right: 80px; } 35% { right: 100px; } 45% { right: 80px; } 55% { right: 100px; } 70% { right: 0; } 100% { right: 0; } }
-    @keyframes swingPlayer { 0%, 10%, 25%, 45%, 70%, 100% { transform: rotate(-40deg); } 15%, 35%, 55% { transform: rotate(45deg); } }
-    @keyframes swingBoss { 0%, 10%, 25%, 45%, 70%, 100% { transform: rotate(40deg); } 15%, 35%, 55% { transform: rotate(-45deg); } }
+    @keyframes introSwingPlayer { 0%, 10%, 25%, 45%, 70%, 100% { transform: rotate(-40deg); } 15%, 35%, 55% { transform: rotate(45deg); } }
+    @keyframes introSwingBoss { 0%, 10%, 25%, 45%, 70%, 100% { transform: rotate(40deg); } 15%, 35%, 55% { transform: rotate(-45deg); } }
     @keyframes sparkAnim { 0%, 14% { opacity: 0; transform: scale(0.5); } 15% { opacity: 1; transform: scale(1.5); } 20% { opacity: 0; } 34% { opacity: 0; } 35% { opacity: 1; transform: scale(1.5); } 40% { opacity: 0; } 54% { opacity: 0; } 55% { opacity: 1; transform: scale(2); color: yellow; text-shadow: 0 0 20px red; } 65% { opacity: 0; } 100% { opacity: 0; } }
 
     /* 메인 버튼들 */
@@ -82,13 +80,20 @@ style.innerHTML = `
     #augment-history { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 50; flex-wrap: wrap-reverse; justify-content: flex-end; max-width: 200px; }
     .history-icon { width: 35px; height: 35px; background: rgba(0,0,0,0.6); border: 1px solid #aaa; border-radius: 5px; display: flex; justify-content: center; align-items: center; font-size: 18px; box-shadow: 0 0 5px black; }
 
-    /* 무기 및 신규 패턴 투사체 스타일 */
+    /* 무기 및 패턴 투사체 스타일 */
     .slash-green { background: #2ecc71 !important; box-shadow: 0 0 15px #2ecc71 !important; border-radius: 10px !important; }
     .slash-lightning { background: #f1c40f !important; box-shadow: 0 0 15px #00ffff !important; border: 2px solid #fff; }
     .slash-dark { background: #2c3e50 !important; box-shadow: 0 0 20px #8e44ad !important; border: 1px solid #000; }
     .unparryable-attack { background: #e74c3c !important; box-shadow: 0 0 25px #e74c3c !important; border: 2px solid white; }
 `;
 document.head.appendChild(style);
+
+// 인게임 플레이어 눈과 무기 삽입
+playerEl.innerHTML = `
+    <div id="player-sword"></div>
+    <div class="ig-eyes"><div class="ig-eye"><div class="ig-pupil"></div></div><div class="ig-eye"><div class="ig-pupil"></div></div></div>
+`;
+const playerSwordEl = document.getElementById('player-sword');
 
 // 오프닝 스크린 및 튜토리얼 HTML 주입
 container.insertAdjacentHTML('beforeend', `
@@ -98,13 +103,13 @@ container.insertAdjacentHTML('beforeend', `
         
         <div class="clash-container">
             <div class="clash-char clash-player">
-                <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+                <div class="ig-eyes"><div class="ig-eye"><div class="ig-pupil"></div></div><div class="ig-eye"><div class="ig-pupil"></div></div></div>
                 <div class="intro-sword"></div>
             </div>
             <div class="clash-spark">💥</div>
             <div class="clash-char clash-boss">
                 <div class="intro-crown"></div>
-                <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+                <div class="ig-eyes"><div class="ig-eye"><div class="ig-pupil"></div></div><div class="ig-eye"><div class="ig-pupil"></div></div></div>
                 <div class="intro-boss-weapon"></div>
             </div>
         </div>
@@ -277,7 +282,6 @@ function getClosestBossTo(targetX, targetY) {
     }
     return closest;
 }
-function getClosestBoss() { return getClosestBossTo(player.x, player.y); }
 
 function spawnDamageText(x, y, damage, type = 'normal') {
     const el = document.createElement('div');
@@ -319,17 +323,20 @@ function spawnBosses() {
     bosses.forEach(b => { b.el.remove(); b.uiEl.remove(); }); bosses = [];
     for(let i = 0; i < bossLevel; i++) {
         const el = originalBossEl.cloneNode(true);
-        el.style.display = 'block'; el.style.position = 'absolute'; el.style.transform = 'translate(-50%, -50%)'; el.style.zIndex = '10';
-
-        el.innerHTML = '';
+        el.style.display = 'flex'; el.style.position = 'absolute'; el.style.transform = 'translate(-50%, -50%)'; el.style.zIndex = '10';
+        el.style.justifyContent = 'center'; el.style.alignItems = 'center'; el.style.borderRadius = '50%';
+        
+        let eyeHtml = `<div class="ig-eyes"><div class="ig-eye"><div class="ig-pupil"></div></div><div class="ig-eye"><div class="ig-pupil"></div></div></div>`;
+        
         if (bossLevel >= 5) {
             el.style.border = '4px solid #f1c40f'; el.style.backgroundColor = '#8e44ad';
-            el.innerHTML = '<div class="boss-crown"></div><div class="boss-weapon-ui"></div>';
+            el.innerHTML = '<div class="boss-crown"></div>' + eyeHtml + '<div class="ig-boss-weapon" style="background:linear-gradient(to right, #8e44ad, #2c3e50); width:60px; height:15px;"></div>';
         } else if (bossLevel >= 3) {
             el.style.border = '4px solid #95a5a6'; el.style.backgroundColor = '#c0392b';
-            el.innerHTML = '<div class="boss-helmet"></div>';
+            el.innerHTML = '<div class="boss-helmet"></div>' + eyeHtml + '<div class="ig-boss-weapon" style="background:#2c3e50; width:55px;"></div>';
         } else {
-            el.style.backgroundColor = '#e74c3c';
+            el.style.backgroundColor = '#e74c3c'; el.style.border = '2px solid white';
+            el.innerHTML = eyeHtml + '<div class="ig-boss-weapon"></div>';
         }
 
         const uiEl = document.createElement('div');
@@ -354,7 +361,6 @@ function spawnBosses() {
     if(topBossName) topBossName.innerText = `WAVE ${bossLevel} (적 ${bossLevel}마리)`;
 }
 
-// ❌ 빨간색 표식이 뜨는 패링 불가 공격 (블래스터)
 function createBlaster(x, y, angle, owner) {
     playSound('parry');
     const el = document.createElement('div'); el.className = 'gaster-blaster';
@@ -522,6 +528,8 @@ function bossLogic() {
                         if (player.isDashing) { } 
                         else if (player.isParrying || player.autoParryTimer > 0) { 
                             createScreenFlash(); spawnParticles(player.x, player.y, '#0ff', 40); player.autoParryTimer = 6; playSound('parryed'); player.isParrying = false; playerEl.classList.remove('parrying', 'parry-cd'); playerEl.classList.add('parry-deflect'); setTimeout(() => playerEl.classList.remove('parry-deflect'), 200);
+                            
+                            // 보스 돌진 패링 시 수동이든 연쇄든 무조건 힐과 기절 데미지 적용
                             if (player.parryHeal) { player.hp = Math.min(player.maxHp, player.hp + 20); spawnDamageText(player.x, player.y, 20, 'heal'); }
                             player.parryCooldown = 0; parryStatusEl.innerText = "돌진 저지 성공! (보스 기절)"; parryStatusEl.style.color = "#2ecc71";
                             boss.hp -= 100; gainExp(50); boss.stateTimer = 90; bossHitEffect(boss, boss.x, boss.y, 100, true); checkBossDeath(boss);
@@ -530,14 +538,14 @@ function bossLogic() {
                 }
                 if (boss.stateTimer >= 90) { boss.el.classList.remove('boss-dashing'); resetBossState(boss); }
             }
-            else if (boss.state === 'pattern6') { // 보라색 거합 베기 (원래 모양 복구 및 무조건 패링 가능)
+            else if (boss.state === 'pattern6') { // 보라색 거합 베기 (원래 반달 투사체 복구 및 패링 가능)
                 if (boss.stateTimer === 1) {
                     boss.el.style.backgroundColor = '#8e44ad'; boss.el.classList.add('boss-telegraph', 'boss-shake');
                     let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'grab-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 15px #8e44ad'; boss.el.appendChild(warning);
                 }
                 if (boss.stateTimer === 60) {
                     playSound('swing'); boss.el.style.backgroundColor = '#c0392b'; boss.el.classList.remove('boss-telegraph', 'boss-shake'); let warn = boss.el.querySelector('.grab-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); 
-                    // 원래 잡기 투사체 생성 (isGrab = true, isUnparryable = false 로 패링 허용)
+                    // 원래 잡기 투사체 형태 (isGrab = true, isUnparryable = false 로 패링 가능)
                     spawnProjectile(boss.x, boss.y, angleToPlayer, 15, 0, true, 80, false, true, boss);
                 }
                 if (boss.stateTimer > 100) resetBossState(boss);
@@ -671,8 +679,8 @@ function update() {
                     let isLaser = p.el.classList.contains('slash-green');
                     let isAutoParry = (player.autoParryTimer > 0 && !player.isParrying);
 
-                    // 화면 하얗게(눈뽕) + 힐은 수동 패링이거나 레이저 첫 타에만 적용! (무한 힐/눈뽕 방지)
-                    if (!isLaser || !isAutoParry) {
+                    // 화면 흰색 깜빡임(눈뽕) 및 힐링은 오직 "수동으로 타이밍을 맞춘 패링" 또는 "초록레이저의 첫 번째 타격" 일때만 1번 발동함
+                    if (!isAutoParry) {
                         createScreenFlash(); 
                         if (player.parryHeal) { 
                             player.hp = Math.min(player.maxHp, player.hp + 20); 
@@ -691,7 +699,7 @@ function update() {
                     
                     player.parryCooldown = 0; 
                     floatingCdEl.innerText = ""; 
-                    parryStatusEl.innerText = p.isGrab ? "잡기 무효화 성공!" : "패링 반사 성공!"; 
+                    parryStatusEl.innerText = p.isGrab ? "거합 무효화 성공!" : "패링 반사 성공!"; 
                     parryStatusEl.style.color = "#2ecc71";
                     
                     if (p.isGrab) { 
