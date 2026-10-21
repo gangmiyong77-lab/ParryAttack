@@ -24,7 +24,7 @@ style.innerHTML = `
     .mob-btn:active { background: rgba(255,255,255,0.5); }
     .mob-btn.hidden { display: none !important; }
 
-    /* 플레이어 및 보스 인게임 외형 */
+    /* 플레이어 인게임 외형 */
     #player { background: #3498db; border: 2px solid #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; z-index: 20; position: relative; transition: filter 0.2s; }
     #player-sword { position: absolute; width: 45px; height: 10px; background: #bdc3c7; left: 25px; top: 20px; border-radius: 5px; transform-origin: left center; transition: all 0.3s; z-index: -1; }
     .attack-anim #player-sword { animation: playerSwing 0.2s ease-out; }
@@ -35,13 +35,32 @@ style.innerHTML = `
     .ig-pupil { width: 6px; height: 6px; background: black; border-radius: 50%; transition: 0.2s; }
     .eye-glow .ig-pupil { background: red; box-shadow: 0 0 10px red; transform: scale(1.2); }
 
+    /* 공통 보스 무기 애니메이션 */
     .ig-boss-weapon { position: absolute; top: 20px; left: -30px; width: 50px; height: 12px; background: #7f8c8d; border-radius: 4px; transform-origin: right center; animation: igBossWeaponIdle 2s infinite alternate; z-index: -1; }
     .boss-attack-anim .ig-boss-weapon { animation: igBossSwing 0.2s ease-out; }
     @keyframes igBossWeaponIdle { 0% { transform: rotate(-10deg); } 100% { transform: rotate(10deg); } }
     @keyframes igBossSwing { 0% { transform: rotate(0deg); } 50% { transform: rotate(-130deg); } 100% { transform: rotate(0deg); } }
 
+    /* =============== 보스 진화별 스타일 =============== */
+    /* Slime (Lv 1-2) */
+    .boss-slime { background: rgba(46, 204, 113, 0.8) !important; border: 3px solid #27ae60 !important; box-shadow: inset 0 0 15px #2ecc71; }
+    
+    /* Armored (Lv 3-4) */
     .boss-helmet { position: absolute; top: -10px; left: 5px; width: 40px; height: 20px; background: #7f8c8d; border-radius: 15px 15px 0 0; border: 2px solid #2c3e50; z-index: 6; }
+    
+    /* Demon Knight (Lv 5-6) */
     .boss-crown { position: absolute; top: -15px; left: 5px; width: 40px; height: 20px; background: linear-gradient(#f1c40f, #e67e22); clip-path: polygon(0 0, 20% 100%, 50% 0, 80% 100%, 100% 0, 100% 100%, 0 100%); z-index: 6; }
+    .boss-horns { position: absolute; top: -20px; width: 100%; display: flex; justify-content: space-between; padding: 0 5px; box-sizing: border-box; }
+    .boss-horn { width: 12px; height: 25px; background: #c0392b; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); z-index: 5; }
+
+    /* Mecha Boss (Lv 7-8) */
+    .boss-mecha { background: #34495e !important; border: 3px solid #00ffff !important; border-radius: 12px !important; box-shadow: 0 0 15px #00ffff; }
+    .boss-visor { position: absolute; top: 15px; left: 10px; width: 30px; height: 10px; background: #00ffff; box-shadow: 0 0 15px #00ffff; z-index: 6; border-radius: 5px; }
+
+    /* Cosmic Entity (Lv 9+) */
+    .boss-cosmic { background: #000 !important; border: 3px dotted #9b59b6 !important; box-shadow: 0 0 30px #8e44ad, inset 0 0 20px #fff !important; }
+    .boss-core { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; background: white; border-radius: 50%; box-shadow: 0 0 20px white; animation: pulseCore 1s infinite alternate; z-index: 4; }
+    @keyframes pulseCore { 0% { transform: translate(-50%, -50%) scale(1); } 100% { transform: translate(-50%, -50%) scale(1.5); } }
 
     /* 강력한 스턴(기절) 효과 CSS */
     .player-stunned { background: #9b59b6 !important; box-shadow: 0 0 20px #8e44ad, inset 0 0 15px #000 !important; animation: stunShake 0.1s infinite; filter: grayscale(0.3); }
@@ -97,13 +116,13 @@ style.innerHTML = `
     .slash { 
         position: absolute; pointer-events: none; z-index: 15; 
         display: flex; justify-content: center; align-items: center; 
-        /* 완벽하게 날카로운 반달(초승달) 검기 모양 */
+        /* 왼쪽은 파이고 오른쪽 끝이 날카로운 완벽한 반달/초승달 형태 */
         clip-path: polygon(0% 0%, 100% 50%, 0% 100%, 30% 50%);
     }
     
     /* 특수 투사체 (클립패스와 그림자 호환) */
     .slash-elemental { background: transparent !important; clip-path: none !important; filter: drop-shadow(0 0 10px currentColor); }
-    .slash-purple { background: #8e44ad !important; }
+    .slash-purple { background: #8e44ad !important; filter: drop-shadow(0 0 10px #8e44ad) !important; }
     
     /* 레이저와 체인은 반달 모양이 아니므로 clip-path 제거 */
     .slash-green { background: #2ecc71 !important; clip-path: none !important; border-radius: 10px !important; filter: drop-shadow(0 0 8px #2ecc71) !important; }
@@ -128,6 +147,7 @@ container.insertAdjacentHTML('beforeend', `
             </div>
             <div class="clash-spark">💥</div>
             <div class="clash-char clash-boss">
+                <div class="boss-horns"><div class="boss-horn" style="transform:rotate(-20deg);"></div><div class="boss-horn" style="transform:rotate(20deg);"></div></div>
                 <div class="intro-crown"></div>
                 <div class="ig-eyes"><div class="ig-eye"><div class="ig-pupil"></div></div><div class="ig-eye"><div class="ig-pupil"></div></div></div>
                 <div class="intro-boss-weapon"></div>
@@ -276,14 +296,34 @@ function spawnBosses() {
     for(let i = 0; i < bossLevel; i++) {
         const el = originalBossEl.cloneNode(true);
         el.style.display = 'flex'; el.style.position = 'absolute'; el.style.transform = 'translate(-50%, -50%)'; el.style.zIndex = '10'; el.style.justifyContent = 'center'; el.style.alignItems = 'center'; el.style.borderRadius = '50%';
-        let eyeHtml = `<div class="ig-eyes"><div class="ig-eye"><div class="ig-pupil"></div></div><div class="ig-eye"><div class="ig-pupil"></div></div></div>`;
         
-        if (bossLevel >= 5) { el.style.border = '4px solid #f1c40f'; el.style.backgroundColor = '#8e44ad'; el.innerHTML = '<div class="boss-crown"></div>' + eyeHtml + '<div class="ig-boss-weapon" style="background:linear-gradient(to right, #8e44ad, #2c3e50); width:60px; height:15px;"></div>'; } 
-        else if (bossLevel >= 3) { el.style.border = '4px solid #95a5a6'; el.style.backgroundColor = '#c0392b'; el.innerHTML = '<div class="boss-helmet"></div>' + eyeHtml + '<div class="ig-boss-weapon" style="background:#2c3e50; width:55px;"></div>'; } 
-        else { el.style.backgroundColor = '#e74c3c'; el.style.border = '2px solid white'; el.innerHTML = eyeHtml + '<div class="ig-boss-weapon"></div>'; }
+        let eyeHtml = `<div class="ig-eyes"><div class="ig-eye"><div class="ig-pupil"></div></div><div class="ig-eye"><div class="ig-pupil"></div></div></div>`;
+        let bossNameStr = ""; let nameColor = "#fff";
+
+        if (bossLevel >= 9) {
+            el.classList.add('boss-cosmic');
+            el.innerHTML = '<div class="boss-core"></div>' + eyeHtml + '<div class="ig-boss-weapon" style="background:linear-gradient(to right, #fff, #8e44ad); width:80px; height:15px; box-shadow: 0 0 15px #8e44ad;"></div>';
+            bossNameStr = `Lv.${bossLevel} Cosmic Being`; nameColor = "#9b59b6";
+        } else if (bossLevel >= 7) {
+            el.classList.add('boss-mecha');
+            el.innerHTML = '<div class="boss-visor"></div><div class="ig-boss-weapon" style="background:#00ffff; width:60px; height:8px; box-shadow:0 0 10px #00ffff;"></div>';
+            bossNameStr = `Lv.${bossLevel} Mecha Boss`; nameColor = "#00ffff";
+        } else if (bossLevel >= 5) {
+            el.style.border = '4px solid #f1c40f'; el.style.backgroundColor = '#8e44ad';
+            el.innerHTML = '<div class="boss-horns"><div class="boss-horn" style="transform:rotate(-20deg);"></div><div class="boss-horn" style="transform:rotate(20deg);"></div></div><div class="boss-crown"></div>' + eyeHtml + '<div class="ig-boss-weapon" style="background:linear-gradient(to right, #8e44ad, #2c3e50); width:70px; height:18px;"></div>';
+            bossNameStr = `Lv.${bossLevel} Demon Knight`; nameColor = "#f1c40f";
+        } else if (bossLevel >= 3) {
+            el.style.border = '4px solid #95a5a6'; el.style.backgroundColor = '#c0392b';
+            el.innerHTML = '<div class="boss-helmet"></div>' + eyeHtml + '<div class="ig-boss-weapon" style="background:#2c3e50; width:55px;"></div>';
+            bossNameStr = `Lv.${bossLevel} Armored Orc`; nameColor = "#e74c3c";
+        } else {
+            el.classList.add('boss-slime');
+            el.innerHTML = eyeHtml + '<div class="ig-boss-weapon" style="background:#27ae60; width:40px; height:10px;"></div>';
+            bossNameStr = `Lv.${bossLevel} Mutant Slime`; nameColor = "#2ecc71";
+        }
 
         const uiEl = document.createElement('div'); uiEl.style.position = 'absolute'; uiEl.style.width = '100px'; uiEl.style.transform = 'translate(-50%, -15px)'; uiEl.style.textAlign = 'center'; uiEl.style.zIndex = '11';
-        const nameEl = document.createElement('div'); nameEl.innerText = bossLevel >= 5 ? `Lv.${bossLevel} Demon Knight` : bossLevel >= 3 ? `Lv.${bossLevel} Armored Boss` : `Lv.${bossLevel} Boss`; nameEl.style.color = bossLevel >= 5 ? '#f1c40f' : '#fff'; nameEl.style.fontSize = '12px'; nameEl.style.fontWeight = 'bold'; nameEl.style.marginBottom = '2px'; nameEl.style.textShadow = '1px 1px 2px #000';
+        const nameEl = document.createElement('div'); nameEl.innerText = bossNameStr; nameEl.style.color = nameColor; nameEl.style.fontSize = '12px'; nameEl.style.fontWeight = 'bold'; nameEl.style.marginBottom = '2px'; nameEl.style.textShadow = '1px 1px 2px #000';
         const hpBg = document.createElement('div'); hpBg.style.width = '100%'; hpBg.style.height = '8px'; hpBg.style.backgroundColor = 'rgba(0,0,0,0.5)'; hpBg.style.border = '1px solid #000';
         const hpFill = document.createElement('div'); hpFill.style.width = '100%'; hpFill.style.height = '100%'; hpFill.style.backgroundColor = '#e74c3c'; hpFill.style.transition = 'width 0.1s';
         hpBg.appendChild(hpFill); uiEl.appendChild(nameEl); uiEl.appendChild(hpBg); container.appendChild(el); container.appendChild(uiEl);
@@ -351,9 +391,7 @@ function doDash() {
     let len = Math.hypot(dx, dy); player.dashDir = { x: dx/len, y: dy/len }; playerEl.style.opacity = '0.4'; setTimeout(() => playerEl.style.opacity = '1', 200);
 }
 
-// ==========================================
-// 완벽한 반달 검기 생성 (모양 및 아이콘 적용)
-// ==========================================
+// 투사체 생성 (완벽히 뾰족한 반달 형태 적용)
 function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = false, isGrab = false, owner = null, isLaser = false, isUnparryable = false, customClass = '') {
     const el = document.createElement('div');
     el.className = `slash ${isBoss ? 'boss-slash' : ''} ${isHeavy ? 'heavy-slash' : ''} ${isLaser ? 'laser-slash' : ''} ${isUnparryable ? 'unparryable-attack' : ''} ${customClass}`;
@@ -370,7 +408,7 @@ function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = fal
         else if (player.weaponType === 'dark') { el.style.color = '#8e44ad'; el.innerText = '🌑'; size *= 1.8; damage *= 1.2; }
     } 
     else {
-        // 기본 검기, 보스 공격, 보라색 공격 모두 완벽한 "뾰족한 반달"
+        // 기본 뾰족 반달
         el.style.width = size + 'px'; 
         el.style.height = (size * 0.8) + 'px'; 
         
@@ -390,7 +428,7 @@ function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = fal
 
     el.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`; 
     
-    // 패링 불가 표시 ❌ 추가 (회전 각도 보정)
+    // ❌ 표식은 패링 불가 공격일 때만 추가
     if (isUnparryable && isBoss) {
         const cross = document.createElement('div'); cross.innerText = '❌'; cross.style.position = 'absolute';
         cross.style.top = '50%'; cross.style.left = '50%'; cross.style.transform = `translate(-50%, -50%) rotate(${-angle}rad)`; 
@@ -468,7 +506,7 @@ function bossLogic() {
                 }
                 if (boss.stateTimer === 60) {
                     playSound('swing'); boss.el.style.backgroundColor = '#c0392b'; boss.el.classList.remove('boss-telegraph', 'boss-shake'); let warn = boss.el.querySelector('.grab-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); 
-                    // isUnparryable = false, isGrab(기절) = true
+                    // isUnparryable = false 로 패링 허용, isGrab = true 로 맞으면 스턴
                     spawnProjectile(boss.x, boss.y, angleToPlayer, 20, 0, true, 120, false, true, boss, false, false, 'slash-purple');
                 }
                 if (boss.stateTimer > 100) resetBossState(boss);
@@ -527,6 +565,7 @@ function update() {
         player.stunTimer--;
         parryStatusEl.innerText = `기절됨! (${Math.ceil(player.stunTimer/60)}초)`; parryStatusEl.style.color = "red";
         
+        // 2초 스턴 이펙트
         let stunInd = document.getElementById('stun-indicator');
         if (!stunInd) {
             stunInd = document.createElement('div'); stunInd.id = 'stun-indicator'; stunInd.className = 'stun-indicator'; stunInd.innerText = '기절!';
@@ -621,7 +660,7 @@ function update() {
                     
                     player.parryCooldown = 0; floatingCdEl.innerText = ""; parryStatusEl.style.color = "#2ecc71";
                     
-                    // 보라색 검기 패링 성공 시 특수 텍스트
+                    // 보라색 검기 패링 성공 시 특수 텍스트 적용
                     if (p.el.classList.contains('slash-purple')) {
                         parryStatusEl.innerText = "스턴 공격 패링 성공!";
                         if(p.owner) { p.owner.hp -= 20; bossHitEffect(p.owner, p.owner.x, p.owner.y, 20, true); checkBossDeath(p.owner); } p.el.remove(); projectiles.splice(i, 1); 
@@ -638,8 +677,8 @@ function update() {
                 } else {
                     let isChain = p.el.classList.contains('slash-chain');
                     
-                    // 패링에 실패하거나, 패링 타이밍을 놓쳤을 경우
-                    if (p.isGrab) { // isGrab은 보라색 스턴 공격을 의미
+                    // 패링 타이밍을 놓쳐 맞았을 경우 (스턴 기믹 포함)
+                    if (p.isGrab) {
                         player.isStunned = true; player.stunTimer = 120; // 2초 기절
                         takeDamage(20); 
                         
