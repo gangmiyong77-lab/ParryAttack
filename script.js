@@ -73,34 +73,23 @@ style.innerHTML = `
     .tut-title { font-weight: bold; color: #3498db; margin-bottom: 8px; font-size: 18px; }
     .tut-close { display: block; margin: 20px auto 0; padding: 10px 30px; background: #3498db; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
 
-    /* 증강 내역 UI 및 커스텀 툴팁 */
+    /* 증강 내역 UI 및 스택 뱃지 */
     #augment-history { position: absolute; top: 10px; right: 10px; display: flex; gap: 12px; z-index: 50; flex-wrap: wrap-reverse; justify-content: flex-end; max-width: 300px; }
-    .history-icon { width: 40px; height: 40px; background: rgba(0,0,0,0.8); border: 1px solid #aaa; border-radius: 5px; display: flex; justify-content: center; align-items: center; font-size: 20px; box-shadow: 0 0 5px black; position: relative; cursor: pointer; transition: 0.2s; }
+    .history-icon { width: 40px; height: 40px; background: rgba(0,0,0,0.7); border: 1px solid #aaa; border-radius: 5px; display: flex; justify-content: center; align-items: center; font-size: 20px; box-shadow: 0 0 5px black; position: relative; cursor: help; }
     .history-icon:hover { border-color: #f1c40f; box-shadow: 0 0 10px #f1c40f; }
-    
-    /* 멋진 마우스 오버 즉시 툴팁 */
-    .history-icon::before {
-        content: attr(data-tooltip); position: absolute; top: 115%; right: 0; width: max-content; max-width: 250px;
-        background: rgba(10,15,20, 0.95); border: 2px solid #f1c40f; color: #fff; padding: 10px;
-        border-radius: 8px; font-size: 14px; font-weight: bold; display: none; z-index: 1000;
-        text-align: right; white-space: pre-wrap; pointer-events: none; box-shadow: 0 0 15px #f1c40f;
-    }
-    .history-icon:hover::before { display: block; }
-    
     .stack-badge { position: absolute; bottom: -6px; right: -6px; background: #e74c3c; color: white; font-size: 12px; font-weight: bold; border-radius: 50%; width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; border: 2px solid #fff; box-shadow: 0 0 5px black; }
 
-    /* 투사체 스타일 (칼날 모양 적용) */
+    /* 투사체 스타일 (원래 검기 모양으로 롤백됨) */
     .slash { position: absolute; background: white; pointer-events: none; z-index: 15; 
-             /* 검기(칼날) 모양 클립패스: 오른쪽이 뾰족한 다이아몬드/반달 형태 */
-             clip-path: polygon(100% 50%, 20% 0, 0 50%, 20% 100%); display: flex; justify-content: center; align-items: center; }
+             border-radius: 50%; /* 깔끔하고 둥근 검기 모양 */
+             display: flex; justify-content: center; align-items: center; }
     
-    /* 특수 투사체 */
-    .slash-purple { background: #8e44ad !important; box-shadow: 0 0 20px #8e44ad !important; 
-                    clip-path: polygon(100% 50%, 0 0, 0 100%) !important; /* 거대하고 넓은 삼각형 파동 */ }
+    .slash-purple { background: #8e44ad !important; box-shadow: 0 0 20px #8e44ad !important; border-radius: 50% !important; }
     .slash-green { background: #2ecc71 !important; box-shadow: 0 0 15px #2ecc71 !important; }
-    .slash-chain { background: #95a5a6 !important; width: 50px !important; height: 6px !important; box-shadow: 0 0 10px #7f8c8d !important; clip-path: none !important; border-radius: 0 !important; }
+    .slash-chain { background: #95a5a6 !important; width: 50px !important; height: 6px !important; box-shadow: 0 0 10px #7f8c8d !important; border-radius: 0 !important; }
     .slash-lightning { background: #f1c40f !important; box-shadow: 0 0 15px #00ffff !important; border: 1px solid #fff; }
     .slash-dark { background: #2c3e50 !important; box-shadow: 0 0 20px #8e44ad !important; }
+    .unparryable-attack { background: #e74c3c !important; box-shadow: 0 0 25px #e74c3c !important; border: 2px solid white; }
 `;
 document.head.appendChild(style);
 
@@ -340,7 +329,7 @@ function doDash() {
     let len = Math.hypot(dx, dy); player.dashDir = { x: dx/len, y: dy/len }; playerEl.style.opacity = '0.4'; setTimeout(() => playerEl.style.opacity = '1', 200);
 }
 
-// 투사체 생성 (칼날 모양 기본 적용)
+// 투사체 생성 (원래의 부드러운 검기 모양으로 생성됨)
 function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = false, isGrab = false, owner = null, isLaser = false, isUnparryable = false, customClass = '') {
     const el = document.createElement('div');
     el.className = `slash ${isBoss ? 'boss-slash' : ''} ${isHeavy ? 'heavy-slash' : ''} ${isLaser ? 'laser-slash' : ''} ${isUnparryable ? 'unparryable-attack' : ''} ${customClass}`;
@@ -357,7 +346,7 @@ function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = fal
     // 패링 불가(스턴 등) 공격 시 확실한 표식 표시 (❌)
     if (isUnparryable && isBoss) {
         const cross = document.createElement('div'); cross.innerText = '❌'; cross.style.position = 'absolute';
-        cross.style.top = '50%'; cross.style.left = '50%'; cross.style.transform = 'translate(-50%, -50%)'; cross.style.fontSize = (size * 0.4) + 'px'; cross.style.textShadow = '0 0 5px black';
+        cross.style.top = '50%'; cross.style.left = '50%'; cross.style.transform = 'translate(-50%, -50%) rotate('+(-angle)+'rad)'; cross.style.fontSize = (size * 0.4) + 'px'; cross.style.textShadow = '0 0 5px black';
         el.appendChild(cross);
     }
     
@@ -401,7 +390,7 @@ function bossLogic() {
                 if(boss.stateTimer === 30) { playSound('swing'); boss.el.classList.remove('eye-glow'); boss.el.classList.add('boss-attack-anim'); spawnProjectile(boss.x, boss.y, angleToPlayer, 12, 20, true, 100, false, false, boss); }
                 if(boss.stateTimer > 70) resetBossState(boss);
             }
-            else if (boss.state === 'pattern5') { // 노란색 돌진 패턴
+            else if (boss.state === 'pattern5') { // 돌진 패턴
                 if (boss.stateTimer === 1) {
                     boss.el.style.backgroundColor = '#f1c40f'; boss.el.classList.add('boss-telegraph', 'boss-shake');
                     let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'dash-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 10px red'; boss.el.appendChild(warning);
@@ -424,14 +413,14 @@ function bossLogic() {
                 }
                 if (boss.stateTimer >= 90) { boss.el.classList.remove('boss-dashing'); resetBossState(boss); }
             }
-            else if (boss.state === 'pattern6') { // 보라색 스턴 파동 (패링 불가, 맞으면 2초 스턴)
+            else if (boss.state === 'pattern6') { // 보라색 스턴 공격 (패링 불가 + 2초 기절 적용됨)
                 if (boss.stateTimer === 1) {
                     boss.el.style.backgroundColor = '#8e44ad'; boss.el.classList.add('boss-telegraph', 'boss-shake');
                     let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'grab-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 15px #8e44ad'; boss.el.appendChild(warning);
                 }
                 if (boss.stateTimer === 60) {
                     playSound('swing'); boss.el.style.backgroundColor = '#c0392b'; boss.el.classList.remove('boss-telegraph', 'boss-shake'); let warn = boss.el.querySelector('.grab-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); 
-                    // 패링 불가(isUnparryable: true), 스턴기(isGrab: true) 설정 적용
+                    // isUnparryable = true, isGrab(기절) = true
                     spawnProjectile(boss.x, boss.y, angleToPlayer, 20, 0, true, 120, false, true, boss, false, true, 'slash-purple');
                 }
                 if (boss.stateTimer > 100) resetBossState(boss);
@@ -447,7 +436,7 @@ function bossLogic() {
                 }
                 if (boss.stateTimer > 90) resetBossState(boss);
             }
-            else if (boss.state === 'pattern8') { // 초록색 연사 레이저 (첫 타격 패링 시 이후 전부 튕겨냄)
+            else if (boss.state === 'pattern8') { // 초록색 연사 레이저
                 if (boss.stateTimer === 1) {
                     boss.el.style.backgroundColor = '#2ecc71'; boss.el.classList.add('boss-telegraph');
                     let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'grab-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 15px #2ecc71'; boss.el.appendChild(warning);
@@ -584,7 +573,7 @@ function update() {
                 } else {
                     let isChain = p.el.classList.contains('slash-chain');
                     
-                    // 패링을 못하고 맞았을 경우 (패링 불가 패턴 포함)
+                    // 패링 불가 공격이거나, 타이밍을 놓쳐 맞았을 경우
                     if (p.isGrab) {
                         player.isStunned = true; player.stunTimer = 120; // 2초 기절
                         takeDamage(20); p.el.remove(); projectiles.splice(i, 1);
@@ -623,8 +612,6 @@ window.restartGame = function() {
     player.attackCooldown = 0; player.burstTimer = 0; player.attackQueue = 0; player.skillCooldown = 0; player.isDashing = false; player.dashTimer = 0; player.dashCooldown = 0; 
     player.isStunned = false; player.stunTimer = 0; player.isPulled = false; player.pullTimer = 0; player.pullTarget = null;
     
-    // 사망 후 획득한 증강(스킬) 내역을 그대로 유지합니다!
-    
     projectiles.forEach(p => p.el.remove()); projectiles = []; blasters.forEach(b => b.el.remove()); blasters = [];
     document.querySelectorAll('.unparryable-hit, .impact-effect, .damage-text, .particle, .fire-trail, .dash-shadow, .screen-flash').forEach(el => el.remove());
     document.getElementById('game-over-modal').classList.add('hidden');
@@ -644,7 +631,10 @@ function renderAugments() {
     histDiv.innerHTML = '';
     player.augments.forEach(aug => {
         const iconEl = document.createElement('div'); iconEl.className = 'history-icon'; iconEl.innerText = aug.icon; 
-        iconEl.setAttribute('data-tooltip', `${aug.name}\n${aug.desc}\n(보유: ${aug.count}개)`);
+        
+        // 확실하게 브라우저 기본 툴팁(말풍선)을 띄우는 title 속성 적용
+        iconEl.title = `${aug.name}\n${aug.desc}\n(스택: ${aug.count})`;
+        
         if (aug.count > 1) {
             const badge = document.createElement('div'); badge.className = 'stack-badge'; badge.innerText = `x${aug.count}`;
             iconEl.appendChild(badge);
