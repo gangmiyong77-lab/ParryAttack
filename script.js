@@ -13,6 +13,33 @@ const originalBossUiEl = document.getElementById('boss-ui');
 if(originalBossEl) originalBossEl.style.display = 'none';
 if(originalBossUiEl) originalBossUiEl.style.display = 'none';
 
+// ================= 모바일 UI 자동 생성 =================
+const style = document.createElement('style');
+style.innerHTML = `
+    @media (min-width: 769px) { #mobile-controls { display: none !important; } }
+    #mobile-controls { position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 30px; box-sizing: border-box; z-index: 100; pointer-events: none; touch-action: none; }
+    #joystick-area { width: 130px; height: 130px; border-radius: 50%; background: rgba(0,0,0,0.4); position: relative; pointer-events: auto; }
+    #joystick-knob { width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.8); position: absolute; top: 40px; left: 40px; }
+    #action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; pointer-events: auto; }
+    .mob-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.5); color: white; font-size: 24px; display: flex; justify-content: center; align-items: center; user-select: none; }
+    .mob-btn:active { background: rgba(255,255,255,0.5); }
+    .mob-btn.hidden { display: none !important; }
+`;
+document.head.appendChild(style);
+
+const mobileUI = document.createElement('div');
+mobileUI.id = 'mobile-controls';
+mobileUI.innerHTML = `
+    <div id="joystick-area"><div id="joystick-knob"></div></div>
+    <div id="action-btns">
+        <div class="mob-btn" id="mob-dash">💨</div>
+        <div class="mob-btn" id="mob-parry">🛡️</div>
+        <div class="mob-btn" id="mob-attack">⚔️</div>
+        <div class="mob-btn hidden" id="mob-skill">🌀</div>
+    </div>
+`;
+container.appendChild(mobileUI);
+
 let isPaused = false;
 let hitStopFrames = 0;
 
@@ -42,6 +69,7 @@ let GAME_WIDTH = container.clientWidth;
 let GAME_HEIGHT = container.clientHeight;
 window.addEventListener('resize', () => { GAME_WIDTH = container.clientWidth; GAME_HEIGHT = container.clientHeight; });
 
+// ================= 입력 처리 (PC & 모바일) =================
 const keys = { w: false, a: false, s: false, d: false };
 
 window.addEventListener('keydown', e => {
@@ -61,6 +89,36 @@ container.addEventListener('mousedown', e => {
 });
 window.addEventListener('mouseup', e => { if (e.button === 0) isAttacking = false; });
 
+// 모바일 조이스틱
+let joyActive = false; let joyCenter = { x: 0, y: 0 }; let joystickDelta = { x: 0, y: 0 };
+const joyArea = document.getElementById('joystick-area');
+const joyKnob = document.getElementById('joystick-knob');
+
+joyArea.addEventListener('touchstart', (e) => {
+    joyActive = true; let rect = joyArea.getBoundingClientRect();
+    joyCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    updateJoystick(e.touches[0]);
+});
+joyArea.addEventListener('touchmove', (e) => { if (joyActive) { e.preventDefault(); updateJoystick(e.touches[0]); } }, {passive: false});
+joyArea.addEventListener('touchend', () => { joyActive = false; joyKnob.style.transform = `translate(0px, 0px)`; joystickDelta = { x: 0, y: 0 }; });
+
+function updateJoystick(touch) {
+    let dx = touch.clientX - joyCenter.x; let dy = touch.clientY - joyCenter.y;
+    let dist = Math.hypot(dx, dy); let maxDist = 40;
+    if (dist > maxDist) { dx = (dx / dist) * maxDist; dy = (dy / dist) * maxDist; }
+    joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+    joystickDelta = { x: dx / maxDist, y: dy / maxDist };
+}
+
+// 모바일 버튼
+const mobAttack = document.getElementById('mob-attack');
+mobAttack.addEventListener('touchstart', (e) => { e.preventDefault(); isAttacking = true; }, {passive: false});
+mobAttack.addEventListener('touchend', (e) => { e.preventDefault(); isAttacking = false; }, {passive: false});
+document.getElementById('mob-parry').addEventListener('touchstart', (e) => { e.preventDefault(); activateParry(); }, {passive: false});
+document.getElementById('mob-dash').addEventListener('touchstart', (e) => { e.preventDefault(); doDash(); }, {passive: false});
+document.getElementById('mob-skill').addEventListener('touchstart', (e) => { e.preventDefault(); doSkill(); }, {passive: false});
+
+// ================= 게임 객체 초기화 =================
 const initPlayer = () => ({
     x: GAME_WIDTH / 2, y: GAME_HEIGHT - 100, speed: 2.5, radius: 25,
     hp: 100, maxHp: 100, exp: 0, maxExp: 200, level: 1, damage: 10,
@@ -250,8 +308,15 @@ function doDash() {
     if (isPaused || player.isGrabbed || player.dashCooldown > 0 || player.isDashing) return;
     playSound('swing'); player.isDashing = true; player.dashTimer = 12; player.dashCooldown = 90;
     let dx = 0, dy = 0;
-    if (keys.w) dy -= 1; if (keys.s) dy += 1; if (keys.a) dx -= 1; if (keys.d) dx += 1;
-    if (dx === 0 && dy === 0) dx = 1;
+    
+    // 조이스틱 입력 우선, 없으면 키보드
+    if (joystickDelta.x !== 0 || joystickDelta.y !== 0) {
+        dx = joystickDelta.x; dy = joystickDelta.y;
+    } else {
+        if (keys.w) dy -= 1; if (keys.s) dy += 1; if (keys.a) dx -= 1; if (keys.d) dx += 1;
+        if (dx === 0 && dy === 0) dx = 1;
+    }
+    
     let len = Math.hypot(dx, dy); player.dashDir = { x: dx/len, y: dy/len };
     playerEl.style.opacity = '0.4'; setTimeout(() => playerEl.style.opacity = '1', 200);
 }
@@ -352,7 +417,6 @@ function bossLogic() {
 
                             if (player.parryHeal) { player.hp = Math.min(player.maxHp, player.hp + 20); spawnDamageText(player.x, player.y, 20, 'heal'); }
 
-                            // 수정됨: 보스 돌진 저지 성공 시 쿨타임 0초 초기화
                             player.parryCooldown = 0; parryStatusEl.innerText = "돌진 저지 성공! (보스 기절)"; parryStatusEl.style.color = "#2ecc71";
                             boss.hp -= 100; gainExp(50); boss.stateTimer = 90;
                             bossHitEffect(boss, boss.x, boss.y, 100, true); checkBossDeath(boss);
@@ -442,10 +506,19 @@ function update() {
 
         if (player.dashTimer <= 0) player.isDashing = false;
     } else if (!player.isGrabbed && !player.isParrying) {
-        if (keys.w && player.y > player.radius) player.y -= player.speed;
-        if (keys.s && player.y < GAME_HEIGHT - player.radius) player.y += player.speed;
-        if (keys.a && player.x > player.radius) player.x -= player.speed;
-        if (keys.d && player.x < GAME_WIDTH - player.radius) player.x += player.speed;
+        // 모바일 조이스틱 이동 (입력이 있을 경우 우선)
+        if (joystickDelta.x !== 0 || joystickDelta.y !== 0) {
+            let nextX = player.x + joystickDelta.x * player.speed;
+            let nextY = player.y + joystickDelta.y * player.speed;
+            player.x = Math.max(player.radius, Math.min(GAME_WIDTH - player.radius, nextX));
+            player.y = Math.max(player.radius, Math.min(GAME_HEIGHT - player.radius, nextY));
+        } else {
+            // PC 키보드 이동
+            if (keys.w && player.y > player.radius) player.y -= player.speed;
+            if (keys.s && player.y < GAME_HEIGHT - player.radius) player.y += player.speed;
+            if (keys.a && player.x > player.radius) player.x -= player.speed;
+            if (keys.d && player.x < GAME_WIDTH - player.radius) player.x += player.speed;
+        }
     }
 
     playerEl.style.left = player.x + 'px'; playerEl.style.top = player.y + 'px';
@@ -544,7 +617,6 @@ function update() {
 
                     if (player.parryHeal) { player.hp = Math.min(player.maxHp, player.hp + 20); spawnDamageText(player.x, player.y, 20, 'heal'); }
 
-                    // 수정됨: 투사체 패링 성공 시 쿨타임 0초 초기화
                     player.parryCooldown = 0;
                     floatingCdEl.innerText = ""; parryStatusEl.innerText = p.isGrab ? "잡기 무효화 성공!" : "패링 반사 성공!";
                     parryStatusEl.style.color = "#2ecc71";
@@ -621,6 +693,9 @@ window.restartGame = function() {
     if (player.hasSkill) {
         if (btnSkillEl) btnSkillEl.classList.remove('hidden');
         if (skillStatusEl) skillStatusEl.classList.remove('hidden');
+        document.getElementById('mob-skill').classList.remove('hidden');
+    } else {
+        document.getElementById('mob-skill').classList.add('hidden');
     }
 
     playerEl.classList.remove('player-grabbed', 'parrying', 'parry-deflect', 'parry-cd', 'hit-flash');
@@ -671,7 +746,6 @@ function showLevelUpModal() {
     });
 }
 
-// 수정됨: 경험치 획득량 3배 상향, 요구 경험치 증가폭 대폭 완화
 function gainExp(amount) {
     player.exp += (amount * 1.5);
     if (player.exp >= player.maxExp) {
@@ -691,7 +765,12 @@ window.selectAugment = function(type) {
     else if (type === 'skill_dash') player.dashDamage = true;
     else if (type === 'skill_parry_heal') player.parryHeal = true;
     else if (type === 'skill_wave') player.waveChance = true;
-    else if (type === 'skill') { player.hasSkill = true; skillStatusEl.classList.remove('hidden'); document.getElementById('btn-skill').classList.remove('hidden'); }
+    else if (type === 'skill') { 
+        player.hasSkill = true; 
+        skillStatusEl.classList.remove('hidden'); 
+        if(document.getElementById('btn-skill')) document.getElementById('btn-skill').classList.remove('hidden'); 
+        document.getElementById('mob-skill').classList.remove('hidden'); 
+    }
     else if (type === 'skill_cooldown') player.maxSkillCooldown = Math.max(180, player.maxSkillCooldown - 100);
 
     document.getElementById('level-up-modal').classList.add('hidden'); updateUI(); isPaused = false;
