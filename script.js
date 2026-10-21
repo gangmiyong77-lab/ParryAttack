@@ -91,18 +91,27 @@ style.innerHTML = `
 
     .stack-badge { position: absolute; bottom: -6px; right: -6px; background: #e74c3c; color: white; font-size: 12px; font-weight: bold; border-radius: 50%; width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; border: 2px solid #fff; box-shadow: 0 0 5px black; z-index: 55; }
 
-    /* 투사체 공통 스타일 */
-    .slash { position: absolute; pointer-events: none; z-index: 15; display: flex; justify-content: center; align-items: center; }
+    /* ====================================================
+       투사체 스타일 (뾰족한 반달/초승달 모양 원상복구) 
+       ==================================================== */
+    .slash { 
+        position: absolute; pointer-events: none; z-index: 15; 
+        display: flex; justify-content: center; align-items: center; 
+        /* 완벽하게 날카로운 반달(초승달) 검기 모양 */
+        clip-path: polygon(0% 0%, 100% 50%, 0% 100%, 30% 50%);
+    }
     
-    /* 속성 무기 아이콘 전용 스타일 */
-    .slash-elemental { background: transparent !important; box-shadow: none !important; border-radius: 0 !important; filter: drop-shadow(0 0 10px currentColor); }
+    /* 특수 투사체 (클립패스와 그림자 호환) */
+    .slash-elemental { background: transparent !important; clip-path: none !important; filter: drop-shadow(0 0 10px currentColor); }
+    .slash-purple { background: #8e44ad !important; }
     
-    /* 레이저 및 체인 스타일 */
-    .slash-green { background: #2ecc71 !important; border-radius: 10px !important; box-shadow: 0 0 15px #2ecc71 !important; }
-    .slash-chain { background: #95a5a6 !important; box-shadow: 0 0 10px #7f8c8d !important; }
+    /* 레이저와 체인은 반달 모양이 아니므로 clip-path 제거 */
+    .slash-green { background: #2ecc71 !important; clip-path: none !important; border-radius: 10px !important; filter: drop-shadow(0 0 8px #2ecc71) !important; }
+    .slash-chain { background: #95a5a6 !important; width: 50px !important; height: 6px !important; clip-path: none !important; border-radius: 0 !important; filter: drop-shadow(0 0 5px #7f8c8d) !important; }
     
-    /* 스턴 및 폭격 공격 */
-    .unparryable-attack { background: #e74c3c !important; box-shadow: 0 0 25px #e74c3c !important; border-radius: 10px; }
+    .slash-lightning { filter: drop-shadow(0 0 10px #00ffff) !important; }
+    .slash-dark { filter: drop-shadow(0 0 15px #8e44ad) !important; }
+    .unparryable-attack { background: #e74c3c !important; filter: drop-shadow(0 0 15px #e74c3c) !important; clip-path: none !important; border-radius: 50%; }
 `;
 document.head.appendChild(style);
 
@@ -141,7 +150,7 @@ container.insertAdjacentHTML('beforeend', `
             - 패링 성공 시 100의 반동 데미지와 함께 보스가 기절합니다.<br><br>
             
             <span style="color:#8e44ad; font-weight:bold;">🟪 [보라색 반달] 강력한 스턴 검기</span><br>
-            - <b>패링 절대 불가! ❌</b> 맞으면 <b>2초간 완벽한 스턴(기절)</b>에 걸립니다. 대시로 피하세요!<br><br>
+            - <b>패링 가능!</b> 타이밍 맞춰 튕겨내세요. 방어에 실패해 맞으면 <b>2초간 스턴</b>에 걸립니다.<br><br>
 
             <span style="color:#7f8c8d; font-weight:bold;">⛓️ [회색 ⛓️] 체인 끌어오기</span><br>
             - 맞으면 보스 앞까지 강제로 끌려갑니다. 패링으로 막아내세요!<br><br>
@@ -350,9 +359,7 @@ function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = fal
     el.className = `slash ${isBoss ? 'boss-slash' : ''} ${isHeavy ? 'heavy-slash' : ''} ${isLaser ? 'laser-slash' : ''} ${isUnparryable ? 'unparryable-attack' : ''} ${customClass}`;
     
     let isElemental = (!isBoss && player.weaponType !== 'normal');
-    let isCrescent = (!isElemental && !isLaser && !customClass.includes('slash-chain'));
 
-    // 속성 무기는 가운데에 아이콘(이모지)을 띄움
     if (isElemental) {
         el.classList.add('slash-elemental');
         el.style.width = size + 'px'; el.style.height = size + 'px';
@@ -362,27 +369,23 @@ function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = fal
         else if (player.weaponType === 'lightning') { el.style.color = '#f1c40f'; el.innerText = '⚡'; speed *= 1.5; }
         else if (player.weaponType === 'dark') { el.style.color = '#8e44ad'; el.innerText = '🌑'; size *= 1.8; damage *= 1.2; }
     } 
-    // 기본 검기와 보라색 거합 베기는 완벽한 "반달(초승달)" 모양
-    else if (isCrescent) {
+    else {
+        // 기본 검기, 보스 공격, 보라색 공격 모두 완벽한 "뾰족한 반달"
         el.style.width = size + 'px'; 
-        el.style.height = size + 'px';
-        el.style.backgroundColor = 'transparent'; 
-        el.style.borderRadius = '50%';
+        el.style.height = (size * 0.8) + 'px'; 
         
-        let thickness = size * 0.25; 
         let color = 'white';
         if (customClass.includes('slash-purple')) color = '#8e44ad';
         else if (isBoss) color = '#e74c3c';
         
-        // border-right을 이용하여 동그라미 오른쪽 절반만 살려 완벽한 초승달 모양 구현
-        el.style.borderRight = `${thickness}px solid ${color}`;
-        el.style.filter = `drop-shadow(0 0 10px ${color})`;
-    } 
-    else if (customClass.includes('slash-chain')) {
-        el.style.width = '50px'; el.style.height = '6px';
-    } 
-    else if (isLaser) {
-        el.style.width = size + 'px'; el.style.height = (size/3) + 'px';
+        el.style.backgroundColor = color;
+        el.style.filter = `drop-shadow(0 0 8px ${color})`;
+        
+        if (customClass.includes('slash-chain')) {
+            el.style.width = '50px'; el.style.height = '6px';
+        } else if (isLaser) {
+            el.style.width = size + 'px'; el.style.height = (size/3) + 'px';
+        }
     }
 
     el.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`; 
@@ -458,15 +461,15 @@ function bossLogic() {
                 }
                 if (boss.stateTimer >= 90) { boss.el.classList.remove('boss-dashing'); resetBossState(boss); }
             }
-            else if (boss.state === 'pattern6') { // 보라색 스턴 공격 (패링 불가, 맞으면 2초 스턴)
+            else if (boss.state === 'pattern6') { // 보라색 스턴 공격 (이제 패링이 완전히 가능합니다)
                 if (boss.stateTimer === 1) {
                     boss.el.style.backgroundColor = '#8e44ad'; boss.el.classList.add('boss-telegraph', 'boss-shake');
                     let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'grab-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 15px #8e44ad'; boss.el.appendChild(warning);
                 }
                 if (boss.stateTimer === 60) {
                     playSound('swing'); boss.el.style.backgroundColor = '#c0392b'; boss.el.classList.remove('boss-telegraph', 'boss-shake'); let warn = boss.el.querySelector('.grab-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); 
-                    // isUnparryable=true, isGrab(스턴)=true
-                    spawnProjectile(boss.x, boss.y, angleToPlayer, 20, 0, true, 120, false, true, boss, false, true, 'slash-purple');
+                    // isUnparryable = false, isGrab(기절) = true
+                    spawnProjectile(boss.x, boss.y, angleToPlayer, 20, 0, true, 120, false, true, boss, false, false, 'slash-purple');
                 }
                 if (boss.stateTimer > 100) resetBossState(boss);
             }
@@ -618,7 +621,12 @@ function update() {
                     
                     player.parryCooldown = 0; floatingCdEl.innerText = ""; parryStatusEl.style.color = "#2ecc71";
                     
-                    if (p.el.classList.contains('slash-chain')) {
+                    // 보라색 검기 패링 성공 시 특수 텍스트
+                    if (p.el.classList.contains('slash-purple')) {
+                        parryStatusEl.innerText = "스턴 공격 패링 성공!";
+                        if(p.owner) { p.owner.hp -= 20; bossHitEffect(p.owner, p.owner.x, p.owner.y, 20, true); checkBossDeath(p.owner); } p.el.remove(); projectiles.splice(i, 1); 
+                    }
+                    else if (p.el.classList.contains('slash-chain')) {
                         parryStatusEl.innerText = "사슬 튕겨내기 성공!";
                         if(p.owner) { p.owner.hp -= 20; bossHitEffect(p.owner, p.owner.x, p.owner.y, 20, true); checkBossDeath(p.owner); } p.el.remove(); projectiles.splice(i, 1); 
                     } else {
@@ -630,13 +638,12 @@ function update() {
                 } else {
                     let isChain = p.el.classList.contains('slash-chain');
                     
-                    // 패링 불가 패턴을 맞거나, 패링 타이밍을 놓쳤을 경우
-                    if (p.isGrab) {
-                        player.isStunned = true; player.stunTimer = 120; // 2초 완벽 기절
+                    // 패링에 실패하거나, 패링 타이밍을 놓쳤을 경우
+                    if (p.isGrab) { // isGrab은 보라색 스턴 공격을 의미
+                        player.isStunned = true; player.stunTimer = 120; // 2초 기절
                         takeDamage(20); 
                         
                         let stunFx = document.createElement('div'); stunFx.className = 'stun-flash'; container.appendChild(stunFx); setTimeout(() => stunFx.remove(), 300);
-                        
                         p.el.remove(); projectiles.splice(i, 1);
                     } else if (isChain) {
                         player.isPulled = true; player.pullTimer = 40; player.pullTarget = p.owner; 
