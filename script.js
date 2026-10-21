@@ -25,7 +25,7 @@ style.innerHTML = `
     .mob-btn.hidden { display: none !important; }
 
     /* 플레이어 및 보스 인게임 외형 */
-    #player { background: #3498db; border: 2px solid #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; z-index: 20; position: relative; }
+    #player { background: #3498db; border: 2px solid #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; z-index: 20; position: relative; transition: filter 0.2s; }
     #player-sword { position: absolute; width: 45px; height: 10px; background: #bdc3c7; left: 25px; top: 20px; border-radius: 5px; transform-origin: left center; transition: all 0.3s; z-index: -1; }
     .attack-anim #player-sword { animation: playerSwing 0.2s ease-out; }
     @keyframes playerSwing { 0% { transform: rotate(0deg); } 50% { transform: rotate(140deg); } 100% { transform: rotate(0deg); } }
@@ -42,6 +42,14 @@ style.innerHTML = `
 
     .boss-helmet { position: absolute; top: -10px; left: 5px; width: 40px; height: 20px; background: #7f8c8d; border-radius: 15px 15px 0 0; border: 2px solid #2c3e50; z-index: 6; }
     .boss-crown { position: absolute; top: -15px; left: 5px; width: 40px; height: 20px; background: linear-gradient(#f1c40f, #e67e22); clip-path: polygon(0 0, 20% 100%, 50% 0, 80% 100%, 100% 0, 100% 100%, 0 100%); z-index: 6; }
+
+    /* 강력한 스턴(기절) 효과 CSS */
+    .player-stunned { background: #9b59b6 !important; box-shadow: 0 0 20px #8e44ad, inset 0 0 15px #000 !important; animation: stunShake 0.1s infinite; filter: grayscale(0.3); }
+    @keyframes stunShake { 0% { transform: translate(2px, 1px) rotate(0deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+    .stun-indicator { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); color: #f1c40f; font-weight: bold; font-size: 18px; text-shadow: 0 0 10px red; white-space: nowrap; animation: blink 0.3s infinite; z-index: 50; }
+    @keyframes blink { 0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); } 50% { opacity: 0.5; transform: translateX(-50%) scale(1.1); } }
+    .stun-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(142, 68, 173, 0.4); z-index: 999; pointer-events: none; animation: fadeOut 0.3s forwards; }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 
     /* 오프닝 화면 */
     #opening-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20, 25, 30, 0.95); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
@@ -73,18 +81,29 @@ style.innerHTML = `
     .tut-title { font-weight: bold; color: #3498db; margin-bottom: 8px; font-size: 18px; }
     .tut-close { display: block; margin: 20px auto 0; padding: 10px 30px; background: #3498db; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
 
-    /* 증강 내역 UI 및 스택 뱃지 */
+    /* 즉시 반응하는 커스텀 증강 툴팁 UI */
     #augment-history { position: absolute; top: 10px; right: 10px; display: flex; gap: 12px; z-index: 50; flex-wrap: wrap-reverse; justify-content: flex-end; max-width: 300px; }
-    .history-icon { width: 40px; height: 40px; background: rgba(0,0,0,0.7); border: 1px solid #aaa; border-radius: 5px; display: flex; justify-content: center; align-items: center; font-size: 20px; box-shadow: 0 0 5px black; position: relative; cursor: help; }
-    .history-icon:hover { border-color: #f1c40f; box-shadow: 0 0 10px #f1c40f; }
-    .stack-badge { position: absolute; bottom: -6px; right: -6px; background: #e74c3c; color: white; font-size: 12px; font-weight: bold; border-radius: 50%; width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; border: 2px solid #fff; box-shadow: 0 0 5px black; }
-
-    /* 투사체 스타일 (원래 검기 모양으로 롤백됨) */
-    .slash { position: absolute; background: white; pointer-events: none; z-index: 15; 
-             border-radius: 50%; /* 깔끔하고 둥근 검기 모양 */
-             display: flex; justify-content: center; align-items: center; }
+    .history-icon { position: relative; width: 40px; height: 40px; background: rgba(0,0,0,0.8); border: 1px solid #aaa; border-radius: 5px; display: flex; justify-content: center; align-items: center; font-size: 20px; box-shadow: 0 0 5px black; cursor: pointer; transition: 0.2s; }
+    .history-icon:hover { border-color: #f1c40f; box-shadow: 0 0 10px #f1c40f; z-index: 60; }
     
-    .slash-purple { background: #8e44ad !important; box-shadow: 0 0 20px #8e44ad !important; border-radius: 50% !important; }
+    .tooltip-text { visibility: hidden; background-color: rgba(15, 20, 25, 0.95); color: #fff; text-align: right; border: 2px solid #f1c40f; border-radius: 8px; padding: 10px; position: absolute; z-index: 1000; top: 110%; right: 0; white-space: pre-wrap; font-size: 13px; font-weight: normal; opacity: 0; width: max-content; max-width: 250px; box-shadow: 0 0 15px #f1c40f; pointer-events: none; }
+    .history-icon:hover .tooltip-text { visibility: visible; opacity: 1; }
+
+    .stack-badge { position: absolute; bottom: -6px; right: -6px; background: #e74c3c; color: white; font-size: 12px; font-weight: bold; border-radius: 50%; width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; border: 2px solid #fff; box-shadow: 0 0 5px black; z-index: 55; }
+
+    /* 투사체 스타일 (보라색 반달 검기 모양 복구 및 적용) */
+    .slash { position: absolute; background: white; pointer-events: none; z-index: 15; 
+             border-radius: 50%; display: flex; justify-content: center; align-items: center; }
+    
+    /* 💥 보라색 스턴 공격을 완전한 반달(초승달) 검기 모양으로 변경 */
+    .slash-purple { 
+        background: #8e44ad !important; 
+        box-shadow: 0 0 20px #8e44ad !important; 
+        border-radius: 0 !important; /* 타원형 제거 */
+        /* 오른쪽이 볼록하고 왼쪽이 파인 완벽한 반달 형태 */
+        clip-path: polygon(0% 0%, 100% 50%, 0% 100%, 30% 50%) !important; 
+    }
+    
     .slash-green { background: #2ecc71 !important; box-shadow: 0 0 15px #2ecc71 !important; }
     .slash-chain { background: #95a5a6 !important; width: 50px !important; height: 6px !important; box-shadow: 0 0 10px #7f8c8d !important; border-radius: 0 !important; }
     .slash-lightning { background: #f1c40f !important; box-shadow: 0 0 15px #00ffff !important; border: 1px solid #fff; }
@@ -127,8 +146,8 @@ container.insertAdjacentHTML('beforeend', `
             <span style="color:#f1c40f; font-weight:bold;">🟨 [노란색 ❗] 돌진 공격</span><br>
             - 패링 성공 시 100의 반동 데미지와 함께 보스가 기절합니다.<br><br>
             
-            <span style="color:#8e44ad; font-weight:bold;">🟪 [보라색 ❗] 강력한 스턴 파동</span><br>
-            - <b>패링 절대 불가! ❌</b> 맞으면 <b>2초간 스턴</b>에 걸립니다. 반드시 대시로 피하세요!<br><br>
+            <span style="color:#8e44ad; font-weight:bold;">🟪 [보라색 반달] 강력한 스턴 검기</span><br>
+            - <b>패링 절대 불가! ❌</b> 맞으면 <b>2초간 완벽한 스턴(기절)</b>에 걸립니다. 대시로 피하세요!<br><br>
 
             <span style="color:#7f8c8d; font-weight:bold;">⛓️ [회색 ⛓️] 체인 끌어오기</span><br>
             - 맞으면 보스 앞까지 강제로 끌려갑니다. 패링으로 막아내세요!<br><br>
@@ -329,12 +348,10 @@ function doDash() {
     let len = Math.hypot(dx, dy); player.dashDir = { x: dx/len, y: dy/len }; playerEl.style.opacity = '0.4'; setTimeout(() => playerEl.style.opacity = '1', 200);
 }
 
-// 투사체 생성 (원래의 부드러운 검기 모양으로 생성됨)
 function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = false, isGrab = false, owner = null, isLaser = false, isUnparryable = false, customClass = '') {
     const el = document.createElement('div');
     el.className = `slash ${isBoss ? 'boss-slash' : ''} ${isHeavy ? 'heavy-slash' : ''} ${isLaser ? 'laser-slash' : ''} ${isUnparryable ? 'unparryable-attack' : ''} ${customClass}`;
     
-    // 무기 외형 스타일 적용
     if (!isBoss) {
         if (player.weaponType === 'fire') { el.classList.add('slash-fire'); } else if (player.weaponType === 'ice') { el.classList.add('slash-ice'); size *= 1.5; }
         else if (player.weaponType === 'lightning') { el.classList.add('slash-lightning'); speed *= 1.5; } else if (player.weaponType === 'dark') { el.classList.add('slash-dark'); size *= 1.8; damage *= 1.2; }
@@ -343,10 +360,11 @@ function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = fal
     el.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`; 
     if (!customClass.includes('slash-chain')) { el.style.width = size + 'px'; el.style.height = (size/3) + 'px'; }
     
-    // 패링 불가(스턴 등) 공격 시 확실한 표식 표시 (❌)
+    // 패링 불가 표시 ❌ 추가 (회전 각도 보정)
     if (isUnparryable && isBoss) {
         const cross = document.createElement('div'); cross.innerText = '❌'; cross.style.position = 'absolute';
-        cross.style.top = '50%'; cross.style.left = '50%'; cross.style.transform = 'translate(-50%, -50%) rotate('+(-angle)+'rad)'; cross.style.fontSize = (size * 0.4) + 'px'; cross.style.textShadow = '0 0 5px black';
+        cross.style.top = '50%'; cross.style.left = '50%'; cross.style.transform = `translate(-50%, -50%) rotate(${-angle}rad)`; 
+        cross.style.fontSize = (size * 0.4) + 'px'; cross.style.textShadow = '0 0 5px black';
         el.appendChild(cross);
     }
     
@@ -413,14 +431,14 @@ function bossLogic() {
                 }
                 if (boss.stateTimer >= 90) { boss.el.classList.remove('boss-dashing'); resetBossState(boss); }
             }
-            else if (boss.state === 'pattern6') { // 보라색 스턴 공격 (패링 불가 + 2초 기절 적용됨)
+            else if (boss.state === 'pattern6') { // 보라색 스턴 검기 (패링 불가, 맞으면 2초 스턴)
                 if (boss.stateTimer === 1) {
                     boss.el.style.backgroundColor = '#8e44ad'; boss.el.classList.add('boss-telegraph', 'boss-shake');
                     let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'grab-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 15px #8e44ad'; boss.el.appendChild(warning);
                 }
                 if (boss.stateTimer === 60) {
                     playSound('swing'); boss.el.style.backgroundColor = '#c0392b'; boss.el.classList.remove('boss-telegraph', 'boss-shake'); let warn = boss.el.querySelector('.grab-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); 
-                    // isUnparryable = true, isGrab(기절) = true
+                    // 패링불가(isUnparryable=true), 스턴기능(isGrab=true) 적용
                     spawnProjectile(boss.x, boss.y, angleToPlayer, 20, 0, true, 120, false, true, boss, false, true, 'slash-purple');
                 }
                 if (boss.stateTimer > 100) resetBossState(boss);
@@ -478,7 +496,20 @@ function update() {
     if (player.isStunned) {
         player.stunTimer--;
         parryStatusEl.innerText = `기절됨! (${Math.ceil(player.stunTimer/60)}초)`; parryStatusEl.style.color = "red";
-        if (player.stunTimer <= 0) player.isStunned = false;
+        
+        // 2초 스턴 이펙트 추가 UI
+        let stunInd = document.getElementById('stun-indicator');
+        if (!stunInd) {
+            stunInd = document.createElement('div'); stunInd.id = 'stun-indicator'; stunInd.className = 'stun-indicator'; stunInd.innerText = '기절!';
+            playerEl.appendChild(stunInd);
+            playerEl.classList.add('player-stunned');
+        }
+
+        if (player.stunTimer <= 0) { 
+            player.isStunned = false; 
+            if (stunInd) stunInd.remove(); 
+            playerEl.classList.remove('player-stunned'); 
+        }
     } else if (player.isPulled) {
         player.pullTimer--;
         if (player.pullTarget && player.pullTarget.hp > 0) {
@@ -573,10 +604,15 @@ function update() {
                 } else {
                     let isChain = p.el.classList.contains('slash-chain');
                     
-                    // 패링 불가 공격이거나, 타이밍을 놓쳐 맞았을 경우
+                    // 패링을 못했거나, 패링 불가 공격(보라색)을 맞은 경우
                     if (p.isGrab) {
                         player.isStunned = true; player.stunTimer = 120; // 2초 기절
-                        takeDamage(20); p.el.remove(); projectiles.splice(i, 1);
+                        takeDamage(20); 
+                        
+                        // 화면 전체 기절 이펙트
+                        let stunFx = document.createElement('div'); stunFx.className = 'stun-flash'; container.appendChild(stunFx); setTimeout(() => stunFx.remove(), 300);
+                        
+                        p.el.remove(); projectiles.splice(i, 1);
                     } else if (isChain) {
                         player.isPulled = true; player.pullTimer = 40; player.pullTarget = p.owner; // 사슬에 끌려감
                         takeDamage(5); p.el.remove(); projectiles.splice(i, 1);
@@ -616,7 +652,10 @@ window.restartGame = function() {
     document.querySelectorAll('.unparryable-hit, .impact-effect, .damage-text, .particle, .fire-trail, .dash-shadow, .screen-flash').forEach(el => el.remove());
     document.getElementById('game-over-modal').classList.add('hidden');
 
-    playerEl.classList.remove('player-grabbed', 'parrying', 'parry-deflect', 'parry-cd', 'hit-flash'); container.classList.remove('screen-shake', 'boss-hit-shake');
+    playerEl.classList.remove('player-grabbed', 'parrying', 'parry-deflect', 'parry-cd', 'hit-flash', 'player-stunned'); 
+    container.classList.remove('screen-shake', 'boss-hit-shake');
+    let stunInd = document.getElementById('stun-indicator'); if(stunInd) stunInd.remove();
+
     spawnBosses(); updateUI(); renderAugments(); isPaused = false; requestAnimationFrame(update);
 }
 
@@ -632,8 +671,10 @@ function renderAugments() {
     player.augments.forEach(aug => {
         const iconEl = document.createElement('div'); iconEl.className = 'history-icon'; iconEl.innerText = aug.icon; 
         
-        // 확실하게 브라우저 기본 툴팁(말풍선)을 띄우는 title 속성 적용
-        iconEl.title = `${aug.name}\n${aug.desc}\n(스택: ${aug.count})`;
+        // 마우스 오버 시 즉각 뜨는 커스텀 UI 툴팁 요소 추가
+        const tooltip = document.createElement('span'); tooltip.className = 'tooltip-text';
+        tooltip.innerText = `${aug.name}\n${aug.desc}\n(중첩 스택: ${aug.count}개)`;
+        iconEl.appendChild(tooltip);
         
         if (aug.count > 1) {
             const badge = document.createElement('div'); badge.className = 'stack-badge'; badge.innerText = `x${aug.count}`;
