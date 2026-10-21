@@ -86,30 +86,23 @@ style.innerHTML = `
     .history-icon { position: relative; width: 40px; height: 40px; background: rgba(0,0,0,0.8); border: 1px solid #aaa; border-radius: 5px; display: flex; justify-content: center; align-items: center; font-size: 20px; box-shadow: 0 0 5px black; cursor: pointer; transition: 0.2s; }
     .history-icon:hover { border-color: #f1c40f; box-shadow: 0 0 10px #f1c40f; z-index: 60; }
     
-    .tooltip-text { visibility: hidden; background-color: rgba(15, 20, 25, 0.95); color: #fff; text-align: right; border: 2px solid #f1c40f; border-radius: 8px; padding: 10px; position: absolute; z-index: 1000; top: 110%; right: 0; white-space: pre-wrap; font-size: 13px; font-weight: normal; opacity: 0; width: max-content; max-width: 250px; box-shadow: 0 0 15px #f1c40f; pointer-events: none; transition: opacity 0.1s; }
-    .history-icon:hover .tooltip-text { visibility: visible; opacity: 1; }
+    .custom-tooltip { visibility: hidden; background-color: rgba(10, 15, 20, 0.95); color: #fff; text-align: right; border: 2px solid #f1c40f; border-radius: 8px; padding: 12px; position: absolute; z-index: 1000; top: 120%; right: 0; white-space: nowrap; font-size: 14px; font-weight: normal; opacity: 0; transition: opacity 0.1s; pointer-events: none; box-shadow: 0 0 15px #f1c40f; line-height: 1.5; }
+    .history-icon:hover .custom-tooltip { visibility: visible; opacity: 1; }
 
     .stack-badge { position: absolute; bottom: -6px; right: -6px; background: #e74c3c; color: white; font-size: 12px; font-weight: bold; border-radius: 50%; width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; border: 2px solid #fff; box-shadow: 0 0 5px black; z-index: 55; }
 
-    /* 투사체 스타일 (완벽한 반달 검기 모양 적용) */
-    .slash { 
-        position: absolute; background: white; pointer-events: none; z-index: 15; 
-        /* 왼쪽은 파이고 오른쪽은 뾰족한 날카로운 초승달 형태 */
-        clip-path: polygon(0% 0%, 100% 50%, 0% 100%, 30% 50%);
-        display: flex; justify-content: center; align-items: center; 
-        filter: drop-shadow(0 0 5px white);
-    }
+    /* 투사체 공통 스타일 */
+    .slash { position: absolute; pointer-events: none; z-index: 15; display: flex; justify-content: center; align-items: center; }
     
-    /* 특수 투사체 (clip-path 호환되도록 drop-shadow 적용) */
-    .slash-purple { background: #8e44ad !important; filter: drop-shadow(0 0 10px #8e44ad) !important; }
+    /* 속성 무기 아이콘 전용 스타일 */
+    .slash-elemental { background: transparent !important; box-shadow: none !important; border-radius: 0 !important; filter: drop-shadow(0 0 10px currentColor); }
     
-    /* 레이저와 체인은 반달 모양이 아니므로 clip-path 제외 */
-    .slash-green { background: #2ecc71 !important; clip-path: none !important; border-radius: 10px !important; filter: drop-shadow(0 0 8px #2ecc71) !important; }
-    .slash-chain { background: #95a5a6 !important; width: 50px !important; height: 6px !important; clip-path: none !important; border-radius: 0 !important; filter: drop-shadow(0 0 5px #7f8c8d) !important; }
+    /* 레이저 및 체인 스타일 */
+    .slash-green { background: #2ecc71 !important; border-radius: 10px !important; box-shadow: 0 0 15px #2ecc71 !important; }
+    .slash-chain { background: #95a5a6 !important; box-shadow: 0 0 10px #7f8c8d !important; }
     
-    .slash-lightning { background: #f1c40f !important; filter: drop-shadow(0 0 10px #00ffff) !important; }
-    .slash-dark { background: #2c3e50 !important; filter: drop-shadow(0 0 15px #8e44ad) !important; }
-    .unparryable-attack { background: #e74c3c !important; filter: drop-shadow(0 0 15px #e74c3c) !important; }
+    /* 스턴 및 폭격 공격 */
+    .unparryable-attack { background: #e74c3c !important; box-shadow: 0 0 25px #e74c3c !important; border-radius: 10px; }
 `;
 document.head.appendChild(style);
 
@@ -139,7 +132,7 @@ container.insertAdjacentHTML('beforeend', `
     <div id="tutorial-modal">
         <div class="tut-header">📖 생존 가이드 & 패턴 요약</div>
         <div class="tut-section">
-            1️⃣ <b>우측 상단 증강 UI:</b> 마우스를 올리면 능력을 볼 수 있으며, 중복 시 숫자가 오릅니다.<br>
+            1️⃣ <b>우측 상단 증강 UI:</b> 마우스를 올리면 즉시 능력을 볼 수 있으며, 중복 시 숫자가 오릅니다.<br>
             2️⃣ <b>죽어도 초기화 안됨:</b> 한 번 얻은 능력치는 죽어도 초기화되지 않습니다!
         </div>
         <div class="tut-section">
@@ -349,19 +342,50 @@ function doDash() {
     let len = Math.hypot(dx, dy); player.dashDir = { x: dx/len, y: dy/len }; playerEl.style.opacity = '0.4'; setTimeout(() => playerEl.style.opacity = '1', 200);
 }
 
-// 투사체 생성 (반달 검기 모양 기본 적용)
+// ==========================================
+// 완벽한 반달 검기 생성 (모양 및 아이콘 적용)
+// ==========================================
 function spawnProjectile(x, y, angle, speed, damage, isBoss, size, isHeavy = false, isGrab = false, owner = null, isLaser = false, isUnparryable = false, customClass = '') {
     const el = document.createElement('div');
     el.className = `slash ${isBoss ? 'boss-slash' : ''} ${isHeavy ? 'heavy-slash' : ''} ${isLaser ? 'laser-slash' : ''} ${isUnparryable ? 'unparryable-attack' : ''} ${customClass}`;
     
-    // 무기 외형 스타일 적용
-    if (!isBoss) {
-        if (player.weaponType === 'fire') { el.classList.add('slash-fire'); } else if (player.weaponType === 'ice') { el.classList.add('slash-ice'); size *= 1.5; }
-        else if (player.weaponType === 'lightning') { el.classList.add('slash-lightning'); speed *= 1.5; } else if (player.weaponType === 'dark') { el.classList.add('slash-dark'); size *= 1.8; damage *= 1.2; }
+    let isElemental = (!isBoss && player.weaponType !== 'normal');
+    let isCrescent = (!isElemental && !isLaser && !customClass.includes('slash-chain'));
+
+    // 속성 무기는 가운데에 아이콘(이모지)을 띄움
+    if (isElemental) {
+        el.classList.add('slash-elemental');
+        el.style.width = size + 'px'; el.style.height = size + 'px';
+        el.style.fontSize = (size * 0.8) + 'px';
+        if (player.weaponType === 'fire') { el.style.color = '#e74c3c'; el.innerText = '🔥'; }
+        else if (player.weaponType === 'ice') { el.style.color = '#00ffff'; el.innerText = '❄️'; size *= 1.5; }
+        else if (player.weaponType === 'lightning') { el.style.color = '#f1c40f'; el.innerText = '⚡'; speed *= 1.5; }
+        else if (player.weaponType === 'dark') { el.style.color = '#8e44ad'; el.innerText = '🌑'; size *= 1.8; damage *= 1.2; }
+    } 
+    // 기본 검기와 보라색 거합 베기는 완벽한 "반달(초승달)" 모양
+    else if (isCrescent) {
+        el.style.width = size + 'px'; 
+        el.style.height = size + 'px';
+        el.style.backgroundColor = 'transparent'; 
+        el.style.borderRadius = '50%';
+        
+        let thickness = size * 0.25; 
+        let color = 'white';
+        if (customClass.includes('slash-purple')) color = '#8e44ad';
+        else if (isBoss) color = '#e74c3c';
+        
+        // border-right을 이용하여 동그라미 오른쪽 절반만 살려 완벽한 초승달 모양 구현
+        el.style.borderRight = `${thickness}px solid ${color}`;
+        el.style.filter = `drop-shadow(0 0 10px ${color})`;
+    } 
+    else if (customClass.includes('slash-chain')) {
+        el.style.width = '50px'; el.style.height = '6px';
+    } 
+    else if (isLaser) {
+        el.style.width = size + 'px'; el.style.height = (size/3) + 'px';
     }
-    
+
     el.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`; 
-    if (!customClass.includes('slash-chain')) { el.style.width = size + 'px'; el.style.height = (size/3) + 'px'; }
     
     // 패링 불가 표시 ❌ 추가 (회전 각도 보정)
     if (isUnparryable && isBoss) {
@@ -434,14 +458,14 @@ function bossLogic() {
                 }
                 if (boss.stateTimer >= 90) { boss.el.classList.remove('boss-dashing'); resetBossState(boss); }
             }
-            else if (boss.state === 'pattern6') { // 보라색 스턴 검기 (패링 불가, 맞으면 2초 스턴)
+            else if (boss.state === 'pattern6') { // 보라색 스턴 공격 (패링 불가, 맞으면 2초 스턴)
                 if (boss.stateTimer === 1) {
                     boss.el.style.backgroundColor = '#8e44ad'; boss.el.classList.add('boss-telegraph', 'boss-shake');
                     let warning = document.createElement('div'); warning.innerText = '❗'; warning.className = 'grab-warning'; warning.style.position = 'absolute'; warning.style.top = '-40px'; warning.style.left = '50%'; warning.style.transform = 'translateX(-50%)'; warning.style.fontSize = '40px'; warning.style.textShadow = '0 0 15px #8e44ad'; boss.el.appendChild(warning);
                 }
                 if (boss.stateTimer === 60) {
                     playSound('swing'); boss.el.style.backgroundColor = '#c0392b'; boss.el.classList.remove('boss-telegraph', 'boss-shake'); let warn = boss.el.querySelector('.grab-warning'); if(warn) warn.remove(); boss.el.classList.add('boss-attack-anim'); 
-                    // 패링 불가(isUnparryable: true), 스턴기(isGrab: true) 설정 적용
+                    // isUnparryable=true, isGrab(스턴)=true
                     spawnProjectile(boss.x, boss.y, angleToPlayer, 20, 0, true, 120, false, true, boss, false, true, 'slash-purple');
                 }
                 if (boss.stateTimer > 100) resetBossState(boss);
@@ -500,7 +524,6 @@ function update() {
         player.stunTimer--;
         parryStatusEl.innerText = `기절됨! (${Math.ceil(player.stunTimer/60)}초)`; parryStatusEl.style.color = "red";
         
-        // 2초 스턴 이펙트(부들부들 떨기 및 텍스트)
         let stunInd = document.getElementById('stun-indicator');
         if (!stunInd) {
             stunInd = document.createElement('div'); stunInd.id = 'stun-indicator'; stunInd.className = 'stun-indicator'; stunInd.innerText = '기절!';
@@ -607,17 +630,16 @@ function update() {
                 } else {
                     let isChain = p.el.classList.contains('slash-chain');
                     
-                    // 패링 불가 공격(보라색) 이거나 실패해서 맞았을 경우
+                    // 패링 불가 패턴을 맞거나, 패링 타이밍을 놓쳤을 경우
                     if (p.isGrab) {
-                        player.isStunned = true; player.stunTimer = 120; // 2초 기절
+                        player.isStunned = true; player.stunTimer = 120; // 2초 완벽 기절
                         takeDamage(20); 
                         
-                        // 화면 전체 보라색 스턴 이펙트
                         let stunFx = document.createElement('div'); stunFx.className = 'stun-flash'; container.appendChild(stunFx); setTimeout(() => stunFx.remove(), 300);
                         
                         p.el.remove(); projectiles.splice(i, 1);
                     } else if (isChain) {
-                        player.isPulled = true; player.pullTimer = 40; player.pullTarget = p.owner; // 사슬에 끌려감
+                        player.isPulled = true; player.pullTimer = 40; player.pullTarget = p.owner; 
                         takeDamage(5); p.el.remove(); projectiles.splice(i, 1);
                     } else {
                         takeDamage(p.damage); p.el.remove(); projectiles.splice(i, 1); 
@@ -674,9 +696,8 @@ function renderAugments() {
     player.augments.forEach(aug => {
         const iconEl = document.createElement('div'); iconEl.className = 'history-icon'; iconEl.innerText = aug.icon; 
         
-        // 마우스 오버 시 즉각 뜨는 커스텀 UI 툴팁 요소 추가
-        const tooltip = document.createElement('span'); tooltip.className = 'tooltip-text';
-        tooltip.innerText = `${aug.name}\n${aug.desc}\n(중첩 스택: ${aug.count}개)`;
+        const tooltip = document.createElement('div'); tooltip.className = 'custom-tooltip';
+        tooltip.innerHTML = `<strong>${aug.name}</strong><br>${aug.desc}<br><span style="color:#f1c40f">보유: ${aug.count}개</span>`;
         iconEl.appendChild(tooltip);
         
         if (aug.count > 1) {
